@@ -1,0 +1,241 @@
+"use client";
+
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+
+type Van = { id: string; vanName: string; capacity: number; driver: { id: string; name: string } | null };
+type EventOption = { id: string; eventName: string; eventDate: string };
+type UnassignedChild = {
+  childId: string;
+  childName: string;
+  parentName: string;
+  pickupNotes: string | null;
+  address: string;
+  suggestedVanId: string | null;
+  suggestedVanName: string | null;
+};
+type Stop = { childId: string; childName: string; vanId: string; stopOrder: number };
+
+function RoutesPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const eventId = searchParams.get("eventId");
+
+  const [events, setEvents] = useState<EventOption[]>([]);
+  const [vans, setVans] = useState<Van[]>([]);
+  const [unassigned, setUnassigned] = useState<UnassignedChild[]>([]);
+  const [assignments, setAssignments] = useState<Record<string, Stop>>({});
+  const [originalAssigned, setOriginalAssigned] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
+      setEvents(evts);
+      if (!eventId && evts.length > 0) {
+        router.replace(`/admin/routes?eventId=${evts[0].id}`);
+      }
+    });
+  }, [eventId, router]);
+
+  const load = useCallback(async () => {
+    if (!eventId) return;
+    const res = await fetch(`/api/events/${eventId}/routes`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setVans(data.vans);
+    setUnassigned(data.unassigned);
+
+    const initial: Record<string, Stop> = {};
+    const originalIds = new Set<string>();
+    for (const van of data.vans) {
+      for (const a of van.routeAssignments) {
+        initial[a.childId] = {
+          childId: a.childId,
+          childName: a.child.childName,
+          vanId: van.id,
+          stopOrder: a.stopOrder,
+        };
+        originalIds.add(a.childId);
+      }
+    }
+    setAssignments(initial);
+    setOriginalAssigned(originalIds);
+    setSaved(false);
+  }, [eventId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function stopsForVan(vanId: string): Stop[] {
+    return Object.values(assignments)
+      .filter((a) => a.vanId === vanId)
+      .sort((a, b) => a.stopOrder - b.stopOrder);
+  }
+
+  function assignChildToVan(childId: string, childName: string, vanId: string) {
+    const nextOrder = stopsForVan(vanId).length + 1;
+    setAssignments((prev) => ({ ...prev, [childId]: { childId, childName, vanId, stopOrder: nextOrder } }));
+    setSaved(false);
+  }
+
+  function unassignChild(childId: string) {
+    setAssignments((prev) => {
+      const next = { ...prev };
+      delete next[childId];
+      return next;
+    });
+    setSaved(false);
+  }
+
+  function moveStop(vanId: string, childId: string, direction: -1 | 1) {
+    const stops = stopsForVan(vanId);
+    const idx = stops.findIndex((s) => s.childId === childId);
+    const swapIdx = idx + direction;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= stops.length) return;
+
+    const reordered = [...stops];
+    [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+
+    setAssignments((prev) => {
+      const next = { ...prev };
+      reordered.forEach((s, i) => {
+        next[s.childId] = { ...next[s.childId], stopOrder: i + 1 };
+      });
+      return next;
+    });
+    setSaved(false);
+  }
+
+  async function publish() {
+    if (!eventId) return;
+    setSaving(true);
+    const assignmentList = Object.values(assignments).map((a) => ({
+      childId: a.childId,
+      vanId: a.vanId,
+      stopOrder: a.stopOrder,
+    }));
+    const unassignList = [...originalAssigned].filter((id) => !(id in assignments));
+
+    await fetch(`/api/events/${eventId}/routes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignments: assignmentList, unassign: unassignList }),
+    });
+    setSaving(false);
+    setSaved(true);
+    load();
+  }
+
+  const unassignedRemaining = unassigned.filter((u) => !(u.childId in assignments));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-slate-900">Today&apos;s Pickup Routes</h1>
+        <select
+          className="input w-auto"
+          value={eventId ?? ""}
+          onChange={(e) => router.replace(`/admin/routes?eventId=${e.target.value}`)}
+        >
+          {events.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.eventName} &mdash; {new Date(e.eventDate).toLocaleDateString()}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="card">
+        <h2 className="font-semibold mb-2">Unassigned ({unassignedRemaining.length})</h2>
+        {unassignedRemaining.length === 0 ? (
+          <p className="text-slate-400 text-sm">Everyone is assigned to a van.</p>
+        ) : (
+          <ul className="space-y-2">
+            {unassignedRemaining.map((u) => (
+              <li key={u.childId} className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2 last:border-0">
+                <div>
+                  <p className="font-medium">{u.childName}</p>
+                  <p className="text-sm text-slate-500">
+                    {u.parentName} &middot; {u.address}
+                    {u.suggestedVanName && (
+                      <span className="text-brand-600"> &middot; usually rides {u.suggestedVanName}</span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {u.suggestedVanId && (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => assignChildToVan(u.childId, u.childName, u.suggestedVanId!)}
+                    >
+                      Use {u.suggestedVanName} ✓
+                    </button>
+                  )}
+                  <select
+                    className="input w-auto"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) assignChildToVan(u.childId, u.childName, e.target.value);
+                    }}
+                  >
+                    <option value="" disabled>Assign to van...</option>
+                    {vans.map((v) => (
+                      <option key={v.id} value={v.id}>{v.vanName}</option>
+                    ))}
+                  </select>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {vans.map((van) => {
+          const stops = stopsForVan(van.id);
+          return (
+            <div key={van.id} className="card">
+              <h2 className="font-semibold mb-1">
+                {van.vanName} {van.driver ? `- ${van.driver.name}` : "(no driver)"}
+              </h2>
+              <p className="text-xs text-slate-400 mb-2">{stops.length} / {van.capacity} riders</p>
+              {stops.length === 0 ? (
+                <p className="text-slate-400 text-sm">No stops assigned.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {stops.map((s, i) => (
+                    <li key={s.childId} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0">
+                      <span>{i + 1}. {s.childName}</span>
+                      <div className="flex gap-1">
+                        <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, -1)} disabled={i === 0}>↑</button>
+                        <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, 1)} disabled={i === stops.length - 1}>↓</button>
+                        <button className="btn-danger px-2 py-1 text-sm" onClick={() => unassignChild(s.childId)}>Remove</button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button className="btn-primary" onClick={publish} disabled={saving}>
+          {saving ? "Publishing..." : "Publish Routes"}
+        </button>
+        {saved && <span className="text-emerald-600 font-medium">Routes published ✓</span>}
+      </div>
+    </div>
+  );
+}
+
+export default function RoutesPage() {
+  return (
+    <Suspense fallback={<p className="text-slate-500">Loading...</p>}>
+      <RoutesPageInner />
+    </Suspense>
+  );
+}
