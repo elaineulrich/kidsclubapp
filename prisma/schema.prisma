@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  VOLUNTEER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  CHECKED_OUT
+}
+
+enum RouteStatus {
+  UNASSIGNED
+  ASSIGNED
+  PICKED_UP
+  COMPLETED
+}
+
+/// Admin & Check-In Volunteer accounts (drivers authenticate separately via login code)
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(VOLUNTEER)
+  activeStatus Boolean  @default(true)
+  createdDate  DateTime @default(now())
+
+  attendanceCheckIns Attendance[] @relation("CheckedInByUser")
+}
+
+model Family {
+  id               String   @id @default(cuid())
+  parentName       String
+  phone            String
+  email            String?
+  address          String
+  city             String
+  state            String
+  zip              String
+  emergencyContact String?
+  createdDate      DateTime @default(now())
+
+  children Child[]
+}
+
+model Child {
+  id             String   @id @default(cuid())
+  familyId       String
+  childName      String
+  birthday       DateTime?
+  grade          String?
+  medicalNotes   String?
+  pickupRequired Boolean  @default(false)
+  pickupNotes    String?
+  activeStatus   Boolean  @default(true)
+  createdDate    DateTime @default(now())
+
+  family           Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  attendances      Attendance[]
+  routeAssignments RouteAssignment[]
+
+  @@index([familyId])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  eventName String
+  eventDate DateTime
+  startTime String
+  endTime   String
+
+  attendances      Attendance[]
+  routeAssignments RouteAssignment[]
+
+  @@index([eventDate])
+}
+
+model Attendance {
+  id            String            @id @default(cuid())
+  eventId       String
+  childId       String
+  checkInTime   DateTime?
+  checkOutTime  DateTime?
+  checkedById   String?
+  status        AttendanceStatus  @default(PRESENT)
+
+  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  child     Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
+  checkedBy User?  @relation("CheckedInByUser", fields: [checkedById], references: [id])
+
+  @@unique([eventId, childId])
+  @@index([eventId])
+  @@index([childId])
+}
+
+model Driver {
+  id           String  @id @default(cuid())
+  name         String
+  phone        String
+  email        String?
+  loginCode    String  @unique
+  activeStatus Boolean @default(true)
+
+  vans             Van[]
+  routeAssignments RouteAssignment[]
+}
+
+model Van {
+  id           String  @id @default(cuid())
+  vanName      String
+  driverId     String?
+  capacity     Int     @default(10)
+  activeStatus Boolean @default(true)
+
+  driver           Driver?           @relation(fields: [driverId], references: [id])
+  routeAssignments RouteAssignment[]
+}
+
+model RouteAssignment {
+  id        String      @id @default(cuid())
+  eventId   String
+  driverId  String?
+  vanId     String?
+  childId   String
+  stopOrder Int         @default(0)
+  status    RouteStatus @default(UNASSIGNED)
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  driver Driver? @relation(fields: [driverId], references: [id])
+  van    Van?    @relation(fields: [vanId], references: [id])
+  child  Child   @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, childId])
+  @@index([eventId, vanId])
+  @@index([childId])
+}
