@@ -13,6 +13,7 @@ const links = [
   { href: "/admin/vans", label: "Vans" },
   { href: "/admin/routes", label: "Routes" },
   { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/users", label: "Staff Accounts" },
 ];
 
 export default function AdminNav() {
