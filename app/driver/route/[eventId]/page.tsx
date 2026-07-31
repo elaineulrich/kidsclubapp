@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { navigateUrl, fullRouteUrl, embedRouteUrl } from "@/lib/maps";
@@ -44,14 +44,83 @@ const STOP_COLORS = [
   "bg-pink-500",
 ];
 
+const CONFETTI_COLORS = ["#2f77c1", "#ffc004", "#ef4444", "#10b981", "#a855f7", "#f97316"];
+
+function Confetti() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => ({
+        id: i,
+        left: Math.random() * 100,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        duration: 2.2 + Math.random() * 1.6,
+        delay: Math.random() * 0.6,
+      })),
+    []
+  );
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[60]">
+      {pieces.map((p) => (
+        <span
+          key={p.id}
+          className="confetti-piece"
+          style={{
+            left: `${p.left}%`,
+            backgroundColor: p.color,
+            animationDuration: `${p.duration}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CelebrationModal({ kind, onContinue, onStartCheckout }: {
+  kind: "checkin" | "checkout";
+  onContinue: () => void;
+  onStartCheckout: (() => void) | null;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center px-4">
+      <Confetti />
+      <div className="card max-w-sm w-full text-center space-y-4 relative z-[61]">
+        <p className="text-4xl">🎉</p>
+        <p className="text-xl font-bold text-emerald-600">
+          {kind === "checkin" ? "Check-In Route Completed!" : "Check-Out Route Completed!"}
+        </p>
+        <p className="text-slate-500 text-sm">
+          {kind === "checkin"
+            ? "Every child on this route is checked in or marked not coming."
+            : "Every checked-in child has been checked out."}
+        </p>
+        <div className="space-y-2">
+          {onStartCheckout && (
+            <button className="btn-gradient w-full" onClick={onStartCheckout}>
+              Start Check-Out Route
+            </button>
+          )}
+          <button className="btn-secondary w-full" onClick={onContinue}>
+            {onStartCheckout ? "Stay Here" : "Continue"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DriverRouteReviewInner() {
   const params = useParams<{ eventId: string }>();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const mode: Mode = searchParams.get("mode") === "checkout" ? "checkout" : "checkin";
 
   const [data, setData] = useState<RouteData | null>(null);
   const [error, setError] = useState("");
   const [busyStopId, setBusyStopId] = useState<string | null>(null);
+  const [celebration, setCelebration] = useState<Mode | null>(null);
+  const prevComplete = useRef<{ checkin: boolean; checkout: boolean } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/driver/route/${params.eventId}`);
@@ -103,6 +172,25 @@ function DriverRouteReviewInner() {
     })).sort((a, b) => a.minOrder - b.minOrder);
   }, [visibleStops]);
 
+  const checkInComplete = !!data && data.stops.length > 0 && data.stops.every(
+    (s) => s.status === "PICKED_UP" || s.status === "COMPLETED" || s.status === "SKIPPED"
+  );
+  const checkedInStops = data ? data.stops.filter((s) => s.status === "PICKED_UP" || s.status === "COMPLETED") : [];
+  const checkOutComplete = checkedInStops.length > 0 && checkedInStops.every((s) => s.status === "COMPLETED");
+
+  // Only celebrate on a genuine false -> true transition for the active mode, not on every
+  // page load of an already-completed route (prevComplete starts null so the first load just
+  // records a baseline without firing).
+  useEffect(() => {
+    if (!data) return;
+    const prev = prevComplete.current;
+    if (prev) {
+      if (mode === "checkin" && !prev.checkin && checkInComplete) setCelebration("checkin");
+      if (mode === "checkout" && !prev.checkout && checkOutComplete) setCelebration("checkout");
+    }
+    prevComplete.current = { checkin: checkInComplete, checkout: checkOutComplete };
+  }, [data, mode, checkInComplete, checkOutComplete]);
+
   if (error) {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
@@ -129,14 +217,22 @@ function DriverRouteReviewInner() {
   const startUrl = fullRouteUrl(data.churchAddress, activeAddresses);
   const interactive = data.timing === "current";
 
-  const checkInComplete = data.stops.length > 0 && data.stops.every(
-    (s) => s.status === "PICKED_UP" || s.status === "COMPLETED" || s.status === "SKIPPED"
-  );
-  const checkedInStops = data.stops.filter((s) => s.status === "PICKED_UP" || s.status === "COMPLETED");
-  const checkOutComplete = checkedInStops.length > 0 && checkedInStops.every((s) => s.status === "COMPLETED");
-
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-4">
+      {celebration && (
+        <CelebrationModal
+          kind={celebration}
+          onContinue={() => setCelebration(null)}
+          onStartCheckout={
+            celebration === "checkin" && interactive
+              ? () => {
+                  setCelebration(null);
+                  router.push(`/driver/route/${data.event.id}?mode=checkout`);
+                }
+              : null
+          }
+        />
+      )}
       <div className="max-w-md mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>
