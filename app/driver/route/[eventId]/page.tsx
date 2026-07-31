@@ -223,6 +223,17 @@ export default function DriverRouteReviewPage() {
                 </div>
               ))}
             </div>
+
+            {data.churchAddress && (
+              <a
+                href={navigateUrl(data.churchAddress)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary w-full block text-center sticky bottom-4"
+              >
+                🏠 Back to Church
+              </a>
+            )}
           </>
         )}
       </div>
