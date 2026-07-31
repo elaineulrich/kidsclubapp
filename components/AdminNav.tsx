@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "./SignOutButton";
@@ -23,8 +24,8 @@ export default function AdminNav() {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/admin" className="font-bold text-slate-900">
-          Kids Club Manager
+        <Link href="/admin" className="flex items-center">
+          <Image src="/logo.png" alt="Haven Kids Club" width={132} height={53} priority />
         </Link>
         <SignOutButton />
       </div>

@@ -31,6 +31,9 @@ body {
   .btn-warning {
     @apply btn bg-orange-500 text-white hover:bg-orange-600;
   }
+  .btn-gradient {
+    @apply btn text-white bg-gradient-to-r from-brand-500 to-brand-800 hover:from-brand-600 hover:to-brand-900;
+  }
   .card {
     @apply rounded-2xl bg-white p-4 shadow-sm border border-slate-200;
   }

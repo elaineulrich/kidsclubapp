@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Image from "next/image";
 
 export default function DriverLoginPage() {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function DriverLoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
+          <Image src="/logo.png" alt="Haven Kids Club" width={180} height={73} className="mx-auto mb-3" priority />
           <h1 className="text-2xl font-bold text-slate-900">Driver Portal</h1>
           <p className="text-slate-500 mt-1">Enter your driver code to see today&apos;s route</p>
         </div>

@@ -3,8 +3,8 @@ import "./globals.css";
 import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Kids Club Manager",
-  description: "Kids Club check-in, transportation, and family management",
+  title: "Haven Kids Club",
+  description: "Haven Kids Club check-in, transportation, and family management",
 };
 
 export const viewport: Viewport = {

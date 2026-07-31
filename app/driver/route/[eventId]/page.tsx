@@ -144,8 +144,8 @@ export default function DriverRouteReviewPage() {
             )}
 
             {startUrl && (
-              <a href={startUrl} target="_blank" rel="noopener noreferrer" className="text-center text-sm text-brand-600 block">
-                Open full route in Google Maps ↗
+              <a href={startUrl} target="_blank" rel="noopener noreferrer" className="btn-gradient w-full block text-center">
+                Open Full Route in Google Maps ↗
               </a>
             )}
 
@@ -183,7 +183,18 @@ export default function DriverRouteReviewPage() {
                         </div>
 
                         {s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
-                          <span className="text-emerald-600 font-semibold text-sm shrink-0">✓ Picked Up</span>
+                          <div className="text-right shrink-0">
+                            <p className="text-emerald-600 font-semibold text-sm">✓ Picked Up</p>
+                            {interactive && (
+                              <button
+                                className="text-xs text-brand-600 underline"
+                                disabled={busyStopId === s.id}
+                                onClick={() => setStatus(s.id, "ASSIGNED")}
+                              >
+                                Undo
+                              </button>
+                            )}
+                          </div>
                         ) : s.status === "SKIPPED" ? (
                           <div className="text-right shrink-0">
                             <p className="text-slate-400 text-sm">Not coming</p>

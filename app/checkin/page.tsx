@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 
@@ -83,7 +84,8 @@ export default function CheckInPage() {
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Kids Club Check-In</h1>
+            <Image src="/logo.png" alt="Haven Kids Club" width={104} height={42} className="mb-1" priority />
+            <h1 className="text-xl font-bold text-slate-900">Check-In</h1>
             {event && <p className="text-sm text-slate-500">{event.eventName}</p>}
           </div>
           <div className="flex items-center gap-3">

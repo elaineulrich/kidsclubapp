@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+
+type AttendanceRecord = {
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  status: string;
+  checkInTime: string | null;
+  checkOutTime: string | null;
+};
 
 type AttendanceReport = {
   events: { id: string; eventName: string; eventDate: string }[];
@@ -11,6 +20,7 @@ type AttendanceReport = {
     totalEvents: number;
     presentCount: number;
     percentage: number;
+    records: AttendanceRecord[];
   }[];
 };
 
@@ -46,6 +56,7 @@ const TABS = ["Attendance", "Transportation", "Family"] as const;
 export default function ReportsPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Attendance");
   const [attendance, setAttendance] = useState<AttendanceReport | null>(null);
+  const [expandedChildId, setExpandedChildId] = useState<string | null>(null);
   const [transportation, setTransportation] = useState<TransportationReport | null>(null);
   const [family, setFamily] = useState<FamilyReport | null>(null);
 
@@ -93,13 +104,60 @@ export default function ReportsPage() {
             </thead>
             <tbody>
               {attendance?.report.map((r) => (
-                <tr key={r.childId} className="border-b border-slate-100 last:border-0">
-                  <td className="py-2 pr-4 font-medium">{r.childName}</td>
-                  <td className="py-2 pr-4">{r.parentName}</td>
-                  <td className="py-2 pr-4">{r.presentCount}</td>
-                  <td className="py-2 pr-4">{r.totalEvents}</td>
-                  <td className="py-2 pr-4">{r.percentage}%</td>
-                </tr>
+                <Fragment key={r.childId}>
+                  <tr
+                    className="border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50"
+                    onClick={() => setExpandedChildId(expandedChildId === r.childId ? null : r.childId)}
+                  >
+                    <td className="py-2 pr-4 font-medium">
+                      {expandedChildId === r.childId ? "▾" : "▸"} {r.childName}
+                    </td>
+                    <td className="py-2 pr-4">{r.parentName}</td>
+                    <td className="py-2 pr-4">{r.presentCount}</td>
+                    <td className="py-2 pr-4">{r.totalEvents}</td>
+                    <td className="py-2 pr-4">{r.percentage}%</td>
+                  </tr>
+                  {expandedChildId === r.childId && (
+                    <tr className="border-b border-slate-100 last:border-0">
+                      <td colSpan={5} className="bg-slate-50 px-4 py-3">
+                        {r.records.length === 0 ? (
+                          <p className="text-slate-400">No check-in activity yet.</p>
+                        ) : (
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-left text-slate-400">
+                                <th className="py-1 pr-4 font-normal">Event</th>
+                                <th className="py-1 pr-4 font-normal">Date</th>
+                                <th className="py-1 pr-4 font-normal">Status</th>
+                                <th className="py-1 pr-4 font-normal">Checked In</th>
+                                <th className="py-1 pr-4 font-normal">Checked Out</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.records.map((rec) => (
+                                <tr key={rec.eventId}>
+                                  <td className="py-1 pr-4">{rec.eventName}</td>
+                                  <td className="py-1 pr-4">{new Date(rec.eventDate).toLocaleDateString()}</td>
+                                  <td className="py-1 pr-4">{rec.status}</td>
+                                  <td className="py-1 pr-4">
+                                    {rec.checkInTime
+                                      ? new Date(rec.checkInTime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+                                      : "—"}
+                                  </td>
+                                  <td className="py-1 pr-4">
+                                    {rec.checkOutTime
+                                      ? new Date(rec.checkOutTime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+                                      : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
