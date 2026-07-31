@@ -41,15 +41,23 @@ function RouteCard({ r }: { r: RouteSummary }) {
       </div>
       <p className="text-slate-500 text-sm">
         {r.startTime}–{r.endTime} · {r.stopCount} stop{r.stopCount === 1 ? "" : "s"}
-        {r.timing !== "upcoming" && ` · ${r.pickedUpCount}/${r.stopCount} picked up`}
+        {r.timing !== "upcoming" && ` · ${r.pickedUpCount}/${r.stopCount} checked in`}
       </p>
       <div className="flex gap-2 pt-1">
-        <Link
-          href={`/driver/route/${r.eventId}`}
-          className={r.timing === "current" ? "btn-primary flex-1 text-center" : "btn-secondary flex-1 text-center"}
-        >
-          {r.timing === "current" ? "Open Route" : "Review Route"}
-        </Link>
+        {r.timing === "current" ? (
+          <>
+            <Link href={`/driver/route/${r.eventId}?mode=checkin`} className="btn-primary flex-1 text-center">
+              Check-In Route
+            </Link>
+            <Link href={`/driver/route/${r.eventId}?mode=checkout`} className="btn-secondary flex-1 text-center">
+              Check-Out Route
+            </Link>
+          </>
+        ) : (
+          <Link href={`/driver/route/${r.eventId}`} className="btn-secondary flex-1 text-center">
+            Review Route
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -77,5 +77,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
     data: { status },
   });
 
+  // PICKED_UP / COMPLETED double as "checked in" / "checked out" for the event
+  // itself - a driver picking a child up from home, or dropping them back off,
+  // is the same real-world event as the check-in desk marking them present or
+  // checked out, so keep the shared Attendance record in sync.
+  if (status === "PICKED_UP") {
+    await prisma.attendance.upsert({
+      where: { eventId_childId: { eventId: params.eventId, childId: assignment.childId } },
+      create: { eventId: params.eventId, childId: assignment.childId, checkInTime: new Date(), status: "PRESENT" },
+      update: { checkInTime: new Date(), status: "PRESENT", checkOutTime: null },
+    });
+  } else if (status === "COMPLETED") {
+    await prisma.attendance.upsert({
+      where: { eventId_childId: { eventId: params.eventId, childId: assignment.childId } },
+      create: { eventId: params.eventId, childId: assignment.childId, checkOutTime: new Date(), status: "CHECKED_OUT" },
+      update: { checkOutTime: new Date(), status: "CHECKED_OUT" },
+    });
+  }
+
   return NextResponse.json(updated);
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { navigateUrl, fullRouteUrl, embedRouteUrl } from "@/lib/maps";
@@ -26,6 +26,8 @@ type RouteData = {
   churchAddress: string;
 };
 
+type Mode = "checkin" | "checkout";
+
 // Cycles through a fixed color per stop number, so a driver can match a stop card to its
 // pin on the map at a glance. (The embedded map itself uses Google's default pin styling -
 // matching pin colors would need the Static Maps API, which requires a Google Cloud API key.)
@@ -42,8 +44,11 @@ const STOP_COLORS = [
   "bg-pink-500",
 ];
 
-export default function DriverRouteReviewPage() {
+function DriverRouteReviewInner() {
   const params = useParams<{ eventId: string }>();
+  const searchParams = useSearchParams();
+  const mode: Mode = searchParams.get("mode") === "checkout" ? "checkout" : "checkin";
+
   const [data, setData] = useState<RouteData | null>(null);
   const [error, setError] = useState("");
   const [busyStopId, setBusyStopId] = useState<string | null>(null);
@@ -73,10 +78,20 @@ export default function DriverRouteReviewPage() {
     load();
   }
 
-  const stopGroups = useMemo(() => {
+  // Check-out only makes sense for kids who were actually checked in; check-in shows everyone.
+  const visibleStops = useMemo(() => {
     if (!data) return [];
+    if (mode === "checkin") return data.stops;
+    return data.stops.filter((s) => s.status === "PICKED_UP" || s.status === "COMPLETED");
+  }, [data, mode]);
+
+  const notYetCheckedInCount = data
+    ? data.stops.filter((s) => s.status !== "PICKED_UP" && s.status !== "COMPLETED").length
+    : 0;
+
+  const stopGroups = useMemo(() => {
     const groups = new Map<string, Stop[]>();
-    for (const s of data.stops) {
+    for (const s of visibleStops) {
       const list = groups.get(s.address) ?? [];
       list.push(s);
       groups.set(s.address, list);
@@ -86,7 +101,7 @@ export default function DriverRouteReviewPage() {
       stops: stops.sort((a, b) => a.stopOrder - b.stopOrder),
       minOrder: Math.min(...stops.map((s) => s.stopOrder)),
     })).sort((a, b) => a.minOrder - b.minOrder);
-  }, [data]);
+  }, [visibleStops]);
 
   if (error) {
     return (
@@ -108,7 +123,7 @@ export default function DriverRouteReviewPage() {
   }
 
   const activeAddresses = [...new Set(
-    data.stops.filter((s) => s.status !== "SKIPPED").map((s) => s.address)
+    visibleStops.filter((s) => s.status !== "SKIPPED").map((s) => s.address)
   )];
   const mapSrc = embedRouteUrl(data.churchAddress, activeAddresses);
   const startUrl = fullRouteUrl(data.churchAddress, activeAddresses);
@@ -123,6 +138,10 @@ export default function DriverRouteReviewPage() {
             <h1 className="text-xl font-bold text-slate-900">{data.event.eventName}</h1>
             <p className="text-slate-500 text-sm">
               {new Date(data.event.eventDate).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+              {" · "}
+              <span className={mode === "checkin" ? "text-brand-600 font-medium" : "text-purple-600 font-medium"}>
+                {mode === "checkin" ? "Check-In Route" : "Check-Out Route"}
+              </span>
             </p>
           </div>
           <SignOutButton />
@@ -130,6 +149,8 @@ export default function DriverRouteReviewPage() {
 
         {data.stops.length === 0 ? (
           <p className="text-slate-500">No stops assigned for this route.</p>
+        ) : mode === "checkout" && visibleStops.length === 0 ? (
+          <p className="text-slate-500">No one has been checked in yet - start the Check-In Route first.</p>
         ) : (
           <>
             {mapSrc && (
@@ -147,6 +168,12 @@ export default function DriverRouteReviewPage() {
               <a href={startUrl} target="_blank" rel="noopener noreferrer" className="btn-gradient w-full block text-center">
                 Open Full Route in Google Maps ↗
               </a>
+            )}
+
+            {mode === "checkout" && notYetCheckedInCount > 0 && (
+              <p className="text-xs text-slate-400 text-center">
+                {notYetCheckedInCount} child{notYetCheckedInCount === 1 ? "" : "ren"} not checked in yet - hidden from this list.
+              </p>
             )}
 
             <div className="space-y-3">
@@ -182,51 +209,78 @@ export default function DriverRouteReviewPage() {
                           {s.pickupNotes && <p className="text-amber-600 text-sm">Notes: {s.pickupNotes}</p>}
                         </div>
 
-                        {s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
-                          <div className="text-right shrink-0">
-                            <p className="text-emerald-600 font-semibold text-sm">✓ Picked Up</p>
-                            {interactive && (
+                        {mode === "checkin" ? (
+                          s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
+                            <div className="text-right shrink-0">
+                              <p className="text-emerald-600 font-semibold text-sm">✓ Checked In</p>
+                              {interactive && (
+                                <button
+                                  className="text-xs text-brand-600 underline"
+                                  disabled={busyStopId === s.id}
+                                  onClick={() => setStatus(s.id, "ASSIGNED")}
+                                >
+                                  Undo
+                                </button>
+                              )}
+                            </div>
+                          ) : s.status === "SKIPPED" ? (
+                            <div className="text-right shrink-0">
+                              <p className="text-slate-400 text-sm">Not coming</p>
+                              {interactive && (
+                                <button
+                                  className="text-xs text-brand-600 underline"
+                                  disabled={busyStopId === s.id}
+                                  onClick={() => setStatus(s.id, "ASSIGNED")}
+                                >
+                                  Undo
+                                </button>
+                              )}
+                            </div>
+                          ) : interactive ? (
+                            <div className="flex flex-col gap-1 shrink-0">
                               <button
-                                className="text-xs text-brand-600 underline"
+                                className="btn-success px-3 py-2 text-sm"
                                 disabled={busyStopId === s.id}
-                                onClick={() => setStatus(s.id, "ASSIGNED")}
+                                onClick={() => setStatus(s.id, "PICKED_UP")}
                               >
-                                Undo
+                                Checked In
                               </button>
-                            )}
-                          </div>
-                        ) : s.status === "SKIPPED" ? (
-                          <div className="text-right shrink-0">
-                            <p className="text-slate-400 text-sm">Not coming</p>
-                            {interactive && (
                               <button
-                                className="text-xs text-brand-600 underline"
+                                className="btn-warning px-3 py-2 text-sm"
                                 disabled={busyStopId === s.id}
-                                onClick={() => setStatus(s.id, "ASSIGNED")}
+                                onClick={() => setStatus(s.id, "SKIPPED")}
                               >
-                                Undo
+                                😢 Not Coming Today
                               </button>
-                            )}
-                          </div>
-                        ) : interactive ? (
-                          <div className="flex flex-col gap-1 shrink-0">
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-sm shrink-0">Not checked in</span>
+                          )
+                        ) : (
+                          s.status === "COMPLETED" ? (
+                            <div className="text-right shrink-0">
+                              <p className="text-emerald-600 font-semibold text-sm">✓ Checked Out</p>
+                              {interactive && (
+                                <button
+                                  className="text-xs text-brand-600 underline"
+                                  disabled={busyStopId === s.id}
+                                  onClick={() => setStatus(s.id, "PICKED_UP")}
+                                >
+                                  Undo
+                                </button>
+                              )}
+                            </div>
+                          ) : interactive ? (
                             <button
                               className="btn-success px-3 py-2 text-sm"
                               disabled={busyStopId === s.id}
-                              onClick={() => setStatus(s.id, "PICKED_UP")}
+                              onClick={() => setStatus(s.id, "COMPLETED")}
                             >
-                              Picked Up
+                              Checked Out
                             </button>
-                            <button
-                              className="btn-warning px-3 py-2 text-sm"
-                              disabled={busyStopId === s.id}
-                              onClick={() => setStatus(s.id, "SKIPPED")}
-                            >
-                              😢 Not Coming Today
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-sm shrink-0">Not picked up</span>
+                          ) : (
+                            <span className="text-slate-400 text-sm shrink-0">Not checked out</span>
+                          )
                         )}
                       </div>
                     ))}
@@ -249,5 +303,17 @@ export default function DriverRouteReviewPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function DriverRouteReviewPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-500">Loading route...</p>
+      </main>
+    }>
+      <DriverRouteReviewInner />
+    </Suspense>
   );
 }
