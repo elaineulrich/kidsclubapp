@@ -12,7 +12,9 @@ type Family = {
   city: string;
   state: string;
   zip: string;
-  emergencyContact: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
   children: { id: string; childName: string }[];
 };
 
@@ -24,7 +26,9 @@ const emptyForm = {
   city: "",
   state: "",
   zip: "",
-  emergencyContact: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactRelationship: "",
 };
 
 export default function FamiliesPage() {
@@ -54,7 +58,9 @@ export default function FamiliesPage() {
       city: f.city,
       state: f.state,
       zip: f.zip,
-      emergencyContact: f.emergencyContact ?? "",
+      emergencyContactName: f.emergencyContactName ?? "",
+      emergencyContactPhone: f.emergencyContactPhone ?? "",
+      emergencyContactRelationship: f.emergencyContactRelationship ?? "",
     });
     setShowForm(true);
   }
@@ -122,11 +128,6 @@ export default function FamiliesPage() {
             <input className="input" type="email" value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
-          <div>
-            <label className="label">Emergency Contact</label>
-            <input className="input" value={form.emergencyContact}
-              onChange={(e) => setForm({ ...form, emergencyContact: e.target.value })} />
-          </div>
           <div className="md:col-span-2">
             <label className="label">Address</label>
             <input className="input" required value={form.address}
@@ -149,6 +150,21 @@ export default function FamiliesPage() {
                 onChange={(e) => setForm({ ...form, zip: e.target.value })} />
             </div>
           </div>
+          <div>
+            <label className="label">Emergency Contact Name</label>
+            <input className="input" value={form.emergencyContactName}
+              onChange={(e) => setForm({ ...form, emergencyContactName: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Emergency Contact Phone</label>
+            <input className="input" value={form.emergencyContactPhone}
+              onChange={(e) => setForm({ ...form, emergencyContactPhone: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Emergency Contact Relationship</label>
+            <input className="input" placeholder="e.g. Grandmother" value={form.emergencyContactRelationship}
+              onChange={(e) => setForm({ ...form, emergencyContactRelationship: e.target.value })} />
+          </div>
           <div className="md:col-span-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Family"}
@@ -165,8 +181,11 @@ export default function FamiliesPage() {
                 <p className="font-semibold text-lg">{f.parentName}</p>
                 <p className="text-slate-500 text-sm">{f.phone} {f.email ? `· ${f.email}` : ""}</p>
                 <p className="text-slate-500 text-sm">{f.address}, {f.city}, {f.state} {f.zip}</p>
-                {f.emergencyContact && (
-                  <p className="text-slate-500 text-sm">Emergency: {f.emergencyContact}</p>
+                {(f.emergencyContactName || f.emergencyContactPhone) && (
+                  <p className="text-slate-500 text-sm">
+                    Emergency: {[f.emergencyContactName, f.emergencyContactPhone, f.emergencyContactRelationship]
+                      .filter(Boolean).join(" · ")}
+                  </p>
                 )}
                 <p className="text-sm mt-2">
                   Children:{" "}

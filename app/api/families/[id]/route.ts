@@ -19,11 +19,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (error) return error;
 
   const body = await req.json();
-  const { parentName, phone, email, address, city, state, zip, emergencyContact } = body;
+  const {
+    parentName, phone, email, address, city, state, zip,
+    emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+  } = body;
 
   const family = await prisma.family.update({
     where: { id: params.id },
-    data: { parentName, phone, email, address, city, state, zip, emergencyContact },
+    data: {
+      parentName, phone, email, address, city, state, zip,
+      emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+    },
   });
 
   return NextResponse.json(family);

@@ -38,7 +38,9 @@ async function main() {
       city: "Anytown",
       state: "ST",
       zip: "00000",
-      emergencyContact: "John Smith - 555-010-0099",
+      emergencyContactName: "John Smith",
+      emergencyContactPhone: "555-010-0099",
+      emergencyContactRelationship: "Spouse",
       children: {
         create: [
           {
@@ -62,7 +64,9 @@ async function main() {
       city: "Anytown",
       state: "ST",
       zip: "00000",
-      emergencyContact: "Ann Jones - 555-010-0098",
+      emergencyContactName: "Ann Jones",
+      emergencyContactPhone: "555-010-0098",
+      emergencyContactRelationship: "Spouse",
       children: {
         create: [
           { childName: "Sarah Jones", birthday: new Date("2015-08-02"), grade: "4th", pickupRequired: true },
@@ -81,7 +85,9 @@ async function main() {
       city: "Anytown",
       state: "ST",
       zip: "00000",
-      emergencyContact: "Tom Brown - 555-010-0097",
+      emergencyContactName: "Tom Brown",
+      emergencyContactPhone: "555-010-0097",
+      emergencyContactRelationship: "Spouse",
       children: {
         create: [
           { childName: "Caleb Brown", birthday: new Date("2014-11-05"), grade: "5th", pickupRequired: true },

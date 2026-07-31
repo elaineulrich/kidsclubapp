@@ -19,7 +19,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (error) return error;
 
   const body = await req.json();
-  const { childName, birthday, grade, medicalNotes, pickupRequired, pickupNotes, activeStatus } = body;
+  const { childName, birthday, grade, medicalNotes, pickupRequired, pickupNotes, bestContactPhone, activeStatus } = body;
 
   const child = await prisma.child.update({
     where: { id: params.id },
@@ -30,6 +30,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       medicalNotes,
       pickupRequired: !!pickupRequired,
       pickupNotes,
+      bestContactPhone,
       activeStatus: activeStatus ?? undefined,
     },
   });

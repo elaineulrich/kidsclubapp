@@ -46,31 +46,36 @@ model User {
 }
 
 model Family {
-  id               String   @id @default(cuid())
-  parentName       String
-  phone            String
-  email            String?
-  address          String
-  city             String
-  state            String
-  zip              String
-  emergencyContact String?
-  createdDate      DateTime @default(now())
+  id                           String   @id @default(cuid())
+  parentName                   String
+  phone                        String
+  email                        String?
+  address                      String
+  city                         String
+  state                        String
+  zip                          String
+  emergencyContactName         String?
+  emergencyContactPhone        String?
+  emergencyContactRelationship String?
+  createdDate                  DateTime @default(now())
 
   children Child[]
 }
 
 model Child {
-  id             String   @id @default(cuid())
-  familyId       String
-  childName      String
-  birthday       DateTime?
-  grade          String?
-  medicalNotes   String?
-  pickupRequired Boolean  @default(false)
-  pickupNotes    String?
-  activeStatus   Boolean  @default(true)
-  createdDate    DateTime @default(now())
+  id               String    @id @default(cuid())
+  familyId         String
+  childName        String
+  birthday         DateTime?
+  grade            String?
+  medicalNotes     String?
+  pickupRequired   Boolean   @default(false)
+  pickupNotes      String?
+  /// Best number to reach someone at during the event itself - may differ from the
+  /// family's main phone (e.g. a grandparent doing pickup that day).
+  bestContactPhone String?
+  activeStatus     Boolean   @default(true)
+  createdDate      DateTime  @default(now())
 
   family           Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
   attendances      Attendance[]

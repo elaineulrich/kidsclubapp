@@ -12,6 +12,7 @@ type Child = {
   medicalNotes: string | null;
   pickupRequired: boolean;
   pickupNotes: string | null;
+  bestContactPhone: string | null;
   activeStatus: boolean;
   family: Family;
 };
@@ -24,6 +25,7 @@ const emptyForm = {
   medicalNotes: "",
   pickupRequired: false,
   pickupNotes: "",
+  bestContactPhone: "",
 };
 
 function ChildrenPageInner() {
@@ -61,6 +63,7 @@ function ChildrenPageInner() {
       medicalNotes: c.medicalNotes ?? "",
       pickupRequired: c.pickupRequired,
       pickupNotes: c.pickupNotes ?? "",
+      bestContactPhone: c.bestContactPhone ?? "",
     });
     setShowForm(true);
   }
@@ -171,6 +174,12 @@ function ChildrenPageInner() {
             <input className="input" placeholder="e.g. Dog outside" value={form.pickupNotes}
               onChange={(e) => setForm({ ...form, pickupNotes: e.target.value })} />
           </div>
+          <div>
+            <label className="label">Best Number to Contact During Kids Club</label>
+            <input className="input" placeholder="Defaults to parent's phone if left blank"
+              value={form.bestContactPhone}
+              onChange={(e) => setForm({ ...form, bestContactPhone: e.target.value })} />
+          </div>
           <div className="md:col-span-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Child"}
@@ -194,6 +203,9 @@ function ChildrenPageInner() {
                   <p className="text-slate-500 text-sm">
                     Transportation required {c.pickupNotes ? `· ${c.pickupNotes}` : ""}
                   </p>
+                )}
+                {c.bestContactPhone && (
+                  <p className="text-slate-500 text-sm">Best contact during event: {c.bestContactPhone}</p>
                 )}
               </div>
               <div className="flex gap-2 items-start">

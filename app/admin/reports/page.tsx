@@ -35,7 +35,9 @@ type FamilyReport = {
   city: string;
   state: string;
   zip: string;
-  emergencyContact: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  emergencyContactRelationship: string | null;
   children: { childName: string; medicalNotes: string | null }[];
 }[];
 
@@ -138,7 +140,12 @@ export default function ReportsPage() {
               <p className="font-semibold">{f.parentName}</p>
               <p className="text-sm text-slate-500">{f.phone} {f.email ? `· ${f.email}` : ""}</p>
               <p className="text-sm text-slate-500">{f.address}, {f.city}, {f.state} {f.zip}</p>
-              {f.emergencyContact && <p className="text-sm text-slate-500">Emergency: {f.emergencyContact}</p>}
+              {(f.emergencyContactName || f.emergencyContactPhone) && (
+                <p className="text-sm text-slate-500">
+                  Emergency: {[f.emergencyContactName, f.emergencyContactPhone, f.emergencyContactRelationship]
+                    .filter(Boolean).join(" · ")}
+                </p>
+              )}
               <p className="text-sm mt-1">
                 Children: {f.children.map((c) => c.childName + (c.medicalNotes ? ` (⚠ ${c.medicalNotes})` : "")).join(", ") || "None"}
               </p>

@@ -30,14 +30,20 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-  const { parentName, phone, email, address, city, state, zip, emergencyContact } = body;
+  const {
+    parentName, phone, email, address, city, state, zip,
+    emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+  } = body;
 
   if (!parentName || !phone || !address || !city || !state || !zip) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const family = await prisma.family.create({
-    data: { parentName, phone, email, address, city, state, zip, emergencyContact },
+    data: {
+      parentName, phone, email, address, city, state, zip,
+      emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+    },
   });
 
   return NextResponse.json(family, { status: 201 });
