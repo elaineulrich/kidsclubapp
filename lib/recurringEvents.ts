@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { Recurrence } from "@prisma/client";
 import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
+import { cacheDel } from "@/lib/redis";
+import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
 
 // Assigns every active, pickup-required child who has a default van set to that van
 // for this event, unless they already have an assignment (e.g. an admin manually
@@ -41,6 +43,8 @@ export async function populateDefaultRoutesForEvent(eventId: string) {
         status: "ASSIGNED",
       },
     });
+
+    if (child.defaultVan.driverId) await cacheDel(driverRouteListKey(child.defaultVan.driverId));
   }
 }
 
@@ -77,6 +81,14 @@ export async function syncChildToNewDefaultVan(childId: string, newVanId: string
         stopOrder: (maxOrder._max.stopOrder ?? 0) + 1,
       },
     });
+
+    const staleDriverIds = new Set([a.driverId, newVan.driverId].filter((id): id is string => !!id));
+    await cacheDel(
+      ...Array.from(staleDriverIds).flatMap((driverId) => [
+        driverRouteListKey(driverId),
+        driverRouteDetailKey(a.eventId, driverId),
+      ])
+    );
   }
 }
 

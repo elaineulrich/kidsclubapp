@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { getOrSetCache } from "@/lib/redis";
 
 export async function GET(req: NextRequest) {
   const { error } = await requireRole(["ADMIN"]);
@@ -8,6 +9,13 @@ export async function GET(req: NextRequest) {
 
   const eventId = req.nextUrl.searchParams.get("eventId");
 
+  const body = await getOrSetCache(`report:attendance:${eventId ?? "all"}`, 30, () =>
+    buildAttendanceReport(eventId)
+  );
+  return NextResponse.json(body);
+}
+
+async function buildAttendanceReport(eventId: string | null) {
   const events = await prisma.event.findMany({ orderBy: { eventDate: "desc" } });
   const totalEvents = eventId ? 1 : events.length;
 
@@ -47,5 +55,5 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ events, report });
+  return { events, report };
 }

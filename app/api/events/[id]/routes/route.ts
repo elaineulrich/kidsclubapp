@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { cacheDel } from "@/lib/redis";
+import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
 
 // GET: returns vans with their current stop list for this event, plus every active
 // pickup-required child with a suggested van based on their default van (falls
@@ -79,6 +81,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     body.assignments ?? [];
   const unassign: string[] = body.unassign ?? [];
 
+  // Any driver who had (or now has) a stop on this event needs their cached route
+  // list/detail invalidated - captured before the transaction too, so a driver fully
+  // removed from the event doesn't keep serving a stale cached route from before.
+  const priorDrivers = await prisma.routeAssignment.findMany({
+    where: { eventId: params.id, driverId: { not: null } },
+    select: { driverId: true },
+  });
+
+  const newDriverIds: (string | null)[] = [];
+
   await prisma.$transaction(async (tx) => {
     for (const childId of unassign) {
       await tx.routeAssignment.deleteMany({ where: { eventId: params.id, childId } });
@@ -86,6 +98,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     for (const a of assignments) {
       const van = a.vanId ? await tx.van.findUnique({ where: { id: a.vanId } }) : null;
+      const driverId = van?.driverId ?? a.driverId ?? null;
+      newDriverIds.push(driverId);
 
       await tx.routeAssignment.upsert({
         where: { eventId_childId: { eventId: params.id, childId: a.childId } },
@@ -93,19 +107,29 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           eventId: params.id,
           childId: a.childId,
           vanId: a.vanId || null,
-          driverId: van?.driverId ?? a.driverId ?? null,
+          driverId,
           stopOrder: a.stopOrder,
           status: "ASSIGNED",
         },
         update: {
           vanId: a.vanId || null,
-          driverId: van?.driverId ?? a.driverId ?? null,
+          driverId,
           stopOrder: a.stopOrder,
           status: "ASSIGNED",
         },
       });
     }
   });
+
+  const affectedDriverIds = new Set<string>();
+  for (const a of priorDrivers) if (a.driverId) affectedDriverIds.add(a.driverId);
+  for (const driverId of newDriverIds) if (driverId) affectedDriverIds.add(driverId);
+  await cacheDel(
+    ...Array.from(affectedDriverIds).flatMap((driverId) => [
+      driverRouteListKey(driverId),
+      driverRouteDetailKey(params.id, driverId),
+    ])
+  );
 
   return NextResponse.json({ ok: true });
 }

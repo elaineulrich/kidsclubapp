@@ -4,6 +4,8 @@ import { requireRole } from "@/lib/apiAuth";
 import { sendRouteEmail } from "@/lib/email";
 import { getOrgTimezone } from "@/lib/orgTime";
 import { getBaseUrl } from "@/lib/baseUrl";
+import { cacheDel } from "@/lib/redis";
+import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
 
 // Marks an event's routes as reviewed/confirmed, emails each driver with an email
 // on file their route link, and returns a per-driver summary (including email
@@ -46,6 +48,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
     }
   }
+
+  await cacheDel(
+    ...Array.from(byDriver.keys()).flatMap((driverId) => [
+      driverRouteListKey(driverId),
+      driverRouteDetailKey(params.id, driverId),
+    ])
+  );
 
   const baseUrl = getBaseUrl(req);
   const timeZone = await getOrgTimezone();

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
+import { getOrSetCache, cacheDel } from "@/lib/redis";
+import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
 
 export async function GET(_req: NextRequest, { params }: { params: { eventId: string } }) {
   const session = await getServerSession(authOptions);
@@ -10,12 +12,23 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const event = await prisma.event.findUnique({ where: { id: params.eventId } });
-  const driver = await prisma.driver.findUnique({ where: { id: session.user.id } });
+  // Only the successful shape is cached - a 404 (no route yet) is never worth caching,
+  // since it'd keep telling a driver they have no route even after one shows up.
+  const result = await getOrSetCache(
+    driverRouteDetailKey(params.eventId, session.user.id),
+    8,
+    () => buildRouteDetail(params.eventId, session.user.id)
+  );
 
-  if (!event || !driver) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  if (!result) return NextResponse.json({ error: "No route assigned to you for this event" }, { status: 404 });
+  return NextResponse.json(result);
+}
+
+async function buildRouteDetail(eventId: string, driverId: string) {
+  const event = await prisma.event.findUnique({ where: { id: eventId } });
+  const driver = await prisma.driver.findUnique({ where: { id: driverId } });
+
+  if (!event || !driver) return null;
 
   const assignments = await prisma.routeAssignment.findMany({
     where: { eventId: event.id, driverId: driver.id },
@@ -23,9 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     include: { child: { include: { family: true } }, van: true },
   });
 
-  if (assignments.length === 0) {
-    return NextResponse.json({ error: "No route assigned to you for this event" }, { status: 404 });
-  }
+  if (assignments.length === 0) return null;
 
   const stops = assignments.map((a) => ({
     id: a.id,
@@ -46,13 +57,13 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
   const timeZone = await getOrgTimezone();
   const timing = classifyDay(event.eventDate, timeZone);
 
-  return NextResponse.json({
+  return {
     event,
     driver: { id: driver.id, name: driver.name },
     stops,
     timing,
     churchAddress: process.env.CHURCH_ADDRESS ?? "",
-  });
+  };
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { eventId: string } }) {
@@ -94,6 +105,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
       update: { checkOutTime: new Date(), status: "CHECKED_OUT" },
     });
   }
+
+  await cacheDel(driverRouteListKey(session.user.id), driverRouteDetailKey(params.eventId, session.user.id));
 
   return NextResponse.json(updated);
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { SUPPORTED_TIMEZONES } from "@/lib/timezones";
+import { cacheDel } from "@/lib/redis";
+import { ORG_TIMEZONE_CACHE_KEY } from "@/lib/orgTime";
 
 export async function GET() {
   const { error } = await requireRole(["ADMIN"]);
@@ -32,6 +34,7 @@ export async function PUT(req: NextRequest) {
     update: { timezone },
     create: { id: "singleton", timezone },
   });
+  await cacheDel(ORG_TIMEZONE_CACHE_KEY);
 
   return NextResponse.json(setting);
 }

@@ -1,10 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import { getOrSetCache } from "@/lib/redis";
 
 const DEFAULT_TIMEZONE = "America/Chicago";
+export const ORG_TIMEZONE_CACHE_KEY = "settings:timezone";
 
+// Read on nearly every request (event classification, driver route lookups, confirm
+// routes) and changed only rarely from the admin Settings page, so it's cached with a
+// generous TTL; the Settings PUT handler busts this key immediately on change.
 export async function getOrgTimezone(): Promise<string> {
-  const setting = await prisma.setting.findUnique({ where: { id: "singleton" } });
-  return setting?.timezone || DEFAULT_TIMEZONE;
+  return getOrSetCache(ORG_TIMEZONE_CACHE_KEY, 300, async () => {
+    const setting = await prisma.setting.findUnique({ where: { id: "singleton" } });
+    return setting?.timezone || DEFAULT_TIMEZONE;
+  });
 }
 
 function dateStringInTimezone(date: Date, timeZone: string): string {
