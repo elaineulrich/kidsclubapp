@@ -115,7 +115,7 @@ export default function DriverRouteReviewPage() {
   const interactive = data.timing === "current";
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6">
+    <main className="min-h-screen bg-slate-50 px-3 py-4">
       <div className="max-w-md mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div>

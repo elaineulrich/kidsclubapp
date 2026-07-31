@@ -3,8 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 
 // GET: returns vans with their current stop list for this event, plus
-// unassigned pickup-required children with a suggested van based on the
-// child's most recent prior route assignment (recurring transportation).
+// unassigned pickup-required children with a suggested van based on their
+// default van (falls back to their most recent prior assignment if they
+// don't have a default set).
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN"]);
   if (error) return error;
@@ -31,7 +32,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const pickupChildren = await prisma.child.findMany({
     where: { activeStatus: true, pickupRequired: true },
-    include: { family: true },
+    include: { family: true, defaultVan: true },
     orderBy: { childName: "asc" },
   });
 
@@ -39,11 +40,18 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   for (const child of pickupChildren) {
     if (assignedChildIds.has(child.id)) continue;
 
-    const previous = await prisma.routeAssignment.findFirst({
-      where: { childId: child.id, vanId: { not: null }, eventId: { not: params.id } },
-      orderBy: { event: { eventDate: "desc" } },
-      include: { van: { include: { driver: true } } },
-    });
+    let suggestedVanId = child.defaultVanId;
+    let suggestedVanName = child.defaultVan?.vanName ?? null;
+
+    if (!suggestedVanId) {
+      const previous = await prisma.routeAssignment.findFirst({
+        where: { childId: child.id, vanId: { not: null }, eventId: { not: params.id } },
+        orderBy: { event: { eventDate: "desc" } },
+        include: { van: true },
+      });
+      suggestedVanId = previous?.vanId ?? null;
+      suggestedVanName = previous?.van?.vanName ?? null;
+    }
 
     unassigned.push({
       childId: child.id,
@@ -55,8 +63,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         child.family.addressLine2,
         `${child.family.city}, ${child.family.state} ${child.family.zip}`,
       ].filter(Boolean).join(", "),
-      suggestedVanId: previous?.vanId ?? null,
-      suggestedVanName: previous?.van?.vanName ?? null,
+      suggestedVanId,
+      suggestedVanName,
     });
   }
 

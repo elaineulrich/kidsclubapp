@@ -30,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-10">
+    <main className="min-h-screen flex items-center justify-center px-4 py-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <Image src="/logo.png" alt="Haven Kids Club" width={220} height={89} className="mx-auto mb-2" priority />

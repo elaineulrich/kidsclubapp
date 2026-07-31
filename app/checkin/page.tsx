@@ -80,7 +80,7 @@ export default function CheckInPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6">
+    <main className="min-h-screen bg-slate-50 px-3 py-4">
       <div className="max-w-md mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div>

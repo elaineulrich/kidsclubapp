@@ -23,13 +23,13 @@ export default function AdminNav() {
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
         <Link href="/admin" className="flex items-center">
-          <Image src="/logo.png" alt="Haven Kids Club" width={132} height={53} priority />
+          <Image src="/logo.png" alt="Haven Kids Club" width={104} height={42} priority />
         </Link>
         <SignOutButton />
       </div>
-      <nav className="max-w-6xl mx-auto px-4 pb-2 flex gap-1 overflow-x-auto">
+      <nav className="max-w-6xl mx-auto px-3 pb-2 flex gap-1 overflow-x-auto">
         {links.map((l) => {
           const active = pathname === l.href;
           return (

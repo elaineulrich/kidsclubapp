@@ -15,6 +15,11 @@ type UnassignedChild = {
   suggestedVanName: string | null;
 };
 type Stop = { childId: string; childName: string; vanId: string; stopOrder: number };
+type EventDetail = { id: string; eventName: string; routesConfirmedAt: string | null };
+type ConfirmResult = {
+  routesConfirmedAt: string;
+  drivers: { driver: { id: string; name: string; phone: string }; vanName: string | null; stopCount: number; routePath: string }[];
+};
 
 function RoutesPageInner() {
   const searchParams = useSearchParams();
@@ -22,12 +27,15 @@ function RoutesPageInner() {
   const eventId = searchParams.get("eventId");
 
   const [events, setEvents] = useState<EventOption[]>([]);
+  const [event, setEvent] = useState<EventDetail | null>(null);
   const [vans, setVans] = useState<Van[]>([]);
   const [unassigned, setUnassigned] = useState<UnassignedChild[]>([]);
   const [assignments, setAssignments] = useState<Record<string, Stop>>({});
   const [originalAssigned, setOriginalAssigned] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmResult, setConfirmResult] = useState<ConfirmResult | null>(null);
 
   useEffect(() => {
     fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
@@ -43,8 +51,10 @@ function RoutesPageInner() {
     const res = await fetch(`/api/events/${eventId}/routes`);
     if (!res.ok) return;
     const data = await res.json();
+    setEvent(data.event);
     setVans(data.vans);
     setUnassigned(data.unassigned);
+    setConfirmResult(null);
 
     const initial: Record<string, Stop> = {};
     const originalIds = new Set<string>();
@@ -126,6 +136,17 @@ function RoutesPageInner() {
     setSaving(false);
     setSaved(true);
     load();
+  }
+
+  async function confirmRoutes() {
+    if (!eventId) return;
+    setConfirming(true);
+    const res = await fetch(`/api/events/${eventId}/confirm`, { method: "POST" });
+    setConfirming(false);
+    if (res.ok) {
+      setConfirmResult(await res.json());
+      load();
+    }
   }
 
   const unassignedRemaining = unassigned.filter((u) => !(u.childId in assignments));
@@ -222,11 +243,49 @@ function RoutesPageInner() {
         })}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <button className="btn-primary" onClick={publish} disabled={saving}>
           {saving ? "Publishing..." : "Publish Routes"}
         </button>
         {saved && <span className="text-emerald-600 font-medium">Routes published ✓</span>}
+      </div>
+
+      <div className="card space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="font-semibold">Confirm Routes</h2>
+            <p className="text-sm text-slate-500">
+              {event?.routesConfirmedAt
+                ? `Confirmed ${new Date(event.routesConfirmedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
+                : "Not yet confirmed. Review the routes above, then confirm to get each driver's link."}
+            </p>
+          </div>
+          <button className="btn-gradient" onClick={confirmRoutes} disabled={confirming}>
+            {confirming ? "Confirming..." : event?.routesConfirmedAt ? "Re-Confirm Routes" : "Confirm Routes"}
+          </button>
+        </div>
+
+        {confirmResult && (
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <p className="text-sm text-slate-500">
+              Share each driver&apos;s link below (e.g. paste into a group text) - automatic texting isn&apos;t set up yet.
+            </p>
+            {confirmResult.drivers.map((d) => (
+              <div key={d.driver.id} className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2 last:border-0">
+                <div>
+                  <p className="font-medium">{d.driver.name} {d.vanName && `· ${d.vanName}`}</p>
+                  <p className="text-sm text-slate-500">{d.driver.phone} · {d.stopCount} stop{d.stopCount === 1 ? "" : "s"}</p>
+                </div>
+                <code className="text-xs bg-slate-100 rounded px-2 py-1 break-all">
+                  {typeof window !== "undefined" ? window.location.origin : ""}{d.routePath}
+                </code>
+              </div>
+            ))}
+            {confirmResult.drivers.length === 0 && (
+              <p className="text-slate-400 text-sm">No drivers have stops assigned for this event yet.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -32,10 +32,10 @@ export default async function AdminDashboard() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="card hover:shadow-md transition">
             <p className="text-3xl font-bold text-brand-600">{s.value}</p>

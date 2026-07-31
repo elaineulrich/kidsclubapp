@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { getOrgTimezone, zonedMidnightUtc } from "@/lib/orgTime";
+import { Recurrence } from "@prisma/client";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER", "DRIVER"]);
@@ -17,7 +18,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (error) return error;
 
   const body = await req.json();
-  const { eventName, eventDate, startTime, endTime } = body;
+  const { eventName, eventDate, startTime, endTime, recurrence } = body;
+
+  if (recurrence && !Object.values(Recurrence).includes(recurrence)) {
+    return NextResponse.json({ error: "Invalid recurrence" }, { status: 400 });
+  }
 
   const event = await prisma.event.update({
     where: { id: params.id },
@@ -26,6 +31,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       eventDate: eventDate ? zonedMidnightUtc(eventDate, await getOrgTimezone()) : undefined,
       startTime,
       endTime,
+      recurrence: recurrence || undefined,
     },
   });
 

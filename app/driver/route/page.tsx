@@ -78,8 +78,8 @@ export default function DriverRoutesPage() {
   const hasAnyRoutes = data.current.length + data.upcoming.length + data.past.length > 0;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-6">
-      <div className="max-w-md mx-auto space-y-6">
+    <main className="min-h-screen bg-slate-50 px-3 py-4">
+      <div className="max-w-md mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-900">{greeting()}</h1>
           <SignOutButton />

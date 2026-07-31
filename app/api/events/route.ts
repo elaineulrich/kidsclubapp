@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { getOrgTimezone, zonedMidnightUtc } from "@/lib/orgTime";
+import { ensureUpcomingOccurrences, populateDefaultRoutesForEvent } from "@/lib/recurringEvents";
+import { Recurrence } from "@prisma/client";
 
 export async function GET() {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER", "DRIVER"]);
   if (error) return error;
+
+  await ensureUpcomingOccurrences();
 
   const events = await prisma.event.findMany({
     orderBy: { eventDate: "desc" },
@@ -19,15 +23,26 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-  const { eventName, eventDate, startTime, endTime } = body;
+  const { eventName, eventDate, startTime, endTime, recurrence } = body;
 
   if (!eventName || !eventDate || !startTime || !endTime) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  if (recurrence && !Object.values(Recurrence).includes(recurrence)) {
+    return NextResponse.json({ error: "Invalid recurrence" }, { status: 400 });
+  }
 
   const event = await prisma.event.create({
-    data: { eventName, eventDate: zonedMidnightUtc(eventDate, await getOrgTimezone()), startTime, endTime },
+    data: {
+      eventName,
+      eventDate: zonedMidnightUtc(eventDate, await getOrgTimezone()),
+      startTime,
+      endTime,
+      recurrence: recurrence || "NONE",
+    },
   });
+
+  await populateDefaultRoutesForEvent(event.id);
 
   return NextResponse.json(event, { status: 201 });
 }

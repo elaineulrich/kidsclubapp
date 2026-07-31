@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Family = { id: string; parentName: string };
+type Van = { id: string; vanName: string };
 type Child = {
   id: string;
   childName: string;
@@ -13,6 +14,7 @@ type Child = {
   pickupRequired: boolean;
   pickupNotes: string | null;
   bestContactPhone: string | null;
+  defaultVan: Van | null;
   activeStatus: boolean;
   family: Family;
 };
@@ -26,6 +28,7 @@ const emptyForm = {
   pickupRequired: false,
   pickupNotes: "",
   bestContactPhone: "",
+  defaultVanId: "",
 };
 
 function ChildrenPageInner() {
@@ -34,6 +37,7 @@ function ChildrenPageInner() {
 
   const [children, setChildren] = useState<Child[]>([]);
   const [families, setFamilies] = useState<Family[]>([]);
+  const [vans, setVans] = useState<Van[]>([]);
   const [q, setQ] = useState("");
   const [showForm, setShowForm] = useState(!!preselectedFamilyId);
   const [form, setForm] = useState({ ...emptyForm, familyId: preselectedFamilyId });
@@ -41,12 +45,14 @@ function ChildrenPageInner() {
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const [childRes, familyRes] = await Promise.all([
+    const [childRes, familyRes, vanRes] = await Promise.all([
       fetch(`/api/children${q ? `?q=${encodeURIComponent(q)}` : ""}`),
       fetch(`/api/families`),
+      fetch(`/api/vans`),
     ]);
     if (childRes.ok) setChildren(await childRes.json());
     if (familyRes.ok) setFamilies(await familyRes.json());
+    if (vanRes.ok) setVans(await vanRes.json());
   }, [q]);
 
   useEffect(() => {
@@ -64,6 +70,7 @@ function ChildrenPageInner() {
       pickupRequired: c.pickupRequired,
       pickupNotes: c.pickupNotes ?? "",
       bestContactPhone: c.bestContactPhone ?? "",
+      defaultVanId: c.defaultVan?.id ?? "",
     });
     setShowForm(true);
   }
@@ -180,6 +187,16 @@ function ChildrenPageInner() {
               value={form.bestContactPhone}
               onChange={(e) => setForm({ ...form, bestContactPhone: e.target.value })} />
           </div>
+          <div>
+            <label className="label">Default Van</label>
+            <select className="input" value={form.defaultVanId}
+              onChange={(e) => setForm({ ...form, defaultVanId: e.target.value })}>
+              <option value="">No default - assign per event</option>
+              {vans.map((v) => (
+                <option key={v.id} value={v.id}>{v.vanName}</option>
+              ))}
+            </select>
+          </div>
           <div className="md:col-span-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Child"}
@@ -203,6 +220,9 @@ function ChildrenPageInner() {
                   <p className="text-slate-500 text-sm">
                     Transportation required {c.pickupNotes ? `· ${c.pickupNotes}` : ""}
                   </p>
+                )}
+                {c.defaultVan && (
+                  <p className="text-slate-500 text-sm">Default Van: {c.defaultVan.vanName}</p>
                 )}
                 {c.bestContactPhone && (
                   <p className="text-slate-500 text-sm">Best contact during event: {c.bestContactPhone}</p>

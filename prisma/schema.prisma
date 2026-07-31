@@ -32,6 +32,12 @@ enum RouteStatus {
   SKIPPED
 }
 
+enum Recurrence {
+  NONE
+  WEEKLY
+  BIWEEKLY
+}
+
 /// Admin & Check-In Volunteer accounts (drivers authenticate separately via login code)
 model User {
   id           String   @id @default(cuid())
@@ -77,10 +83,15 @@ model Child {
   /// Best number to reach someone at during the event itself - may differ from the
   /// family's main phone (e.g. a grandparent doing pickup that day).
   bestContactPhone String?
+  /// The van this child normally rides. New events auto-assign this child to this
+  /// van; a one-off change for a single event doesn't touch this - only editing it
+  /// here (the child's profile) changes their default going forward.
+  defaultVanId     String?
   activeStatus     Boolean   @default(true)
   createdDate      DateTime  @default(now())
 
   family           Family            @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  defaultVan       Van?              @relation(fields: [defaultVanId], references: [id], onDelete: SetNull)
   attendances      Attendance[]
   routeAssignments RouteAssignment[]
 
@@ -88,30 +99,38 @@ model Child {
 }
 
 model Event {
-  id        String   @id @default(cuid())
-  eventName String
-  eventDate DateTime
-  startTime String
-  endTime   String
+  id                String     @id @default(cuid())
+  eventName         String
+  eventDate         DateTime
+  startTime         String
+  endTime           String
+  recurrence        Recurrence @default(NONE)
+  /// Groups an event with the ones auto-generated from it. Points at the id of the
+  /// first event in the series; null on the first event itself (its own id is the
+  /// series root).
+  seriesId          String?
+  /// Set once an admin has reviewed and confirmed this event's routes for drivers.
+  routesConfirmedAt DateTime?
 
   attendances      Attendance[]
   routeAssignments RouteAssignment[]
 
   @@index([eventDate])
+  @@index([seriesId])
 }
 
 model Attendance {
-  id            String            @id @default(cuid())
-  eventId       String
-  childId       String
-  checkInTime   DateTime?
-  checkOutTime  DateTime?
-  checkedById   String?
-  status        AttendanceStatus  @default(PRESENT)
+  id           String           @id @default(cuid())
+  eventId      String
+  childId      String
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  checkedById  String?
+  status       AttendanceStatus @default(PRESENT)
 
-  event     Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  child     Child  @relation(fields: [childId], references: [id], onDelete: Cascade)
-  checkedBy User?  @relation("CheckedInByUser", fields: [checkedById], references: [id])
+  event     Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  child     Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  checkedBy User? @relation("CheckedInByUser", fields: [checkedById], references: [id])
 
   @@unique([eventId, childId])
   @@index([eventId])
@@ -137,8 +156,9 @@ model Van {
   capacity     Int     @default(10)
   activeStatus Boolean @default(true)
 
-  driver           Driver?           @relation(fields: [driverId], references: [id])
-  routeAssignments RouteAssignment[]
+  driver             Driver?           @relation(fields: [driverId], references: [id])
+  routeAssignments   RouteAssignment[]
+  defaultForChildren Child[]
 }
 
 model RouteAssignment {

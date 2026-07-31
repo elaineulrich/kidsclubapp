@@ -3,15 +3,30 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
+type Recurrence = "NONE" | "WEEKLY" | "BIWEEKLY";
+
 type Event = {
   id: string;
   eventName: string;
   eventDate: string;
   startTime: string;
   endTime: string;
+  recurrence: Recurrence;
 };
 
-const emptyForm = { eventName: "Kids Club", eventDate: "", startTime: "18:00", endTime: "19:30" };
+const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  NONE: "One-time",
+  WEEKLY: "Weekly",
+  BIWEEKLY: "Every 2 weeks",
+};
+
+const emptyForm = {
+  eventName: "Kids Club",
+  eventDate: "",
+  startTime: "18:00",
+  endTime: "19:30",
+  recurrence: "NONE" as Recurrence,
+};
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -36,6 +51,7 @@ export default function EventsPage() {
       eventDate: e.eventDate.slice(0, 10),
       startTime: e.startTime,
       endTime: e.endTime,
+      recurrence: e.recurrence,
     });
     setShowForm(true);
   }
@@ -103,6 +119,21 @@ export default function EventsPage() {
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
             </div>
           </div>
+          <div>
+            <label className="label">Repeats</label>
+            <select className="input" value={form.recurrence}
+              onChange={(e) => setForm({ ...form, recurrence: e.target.value as Recurrence })}>
+              {(Object.keys(RECURRENCE_LABELS) as Recurrence[]).map((r) => (
+                <option key={r} value={r}>{RECURRENCE_LABELS[r]}</option>
+              ))}
+            </select>
+            {form.recurrence !== "NONE" && (
+              <p className="text-xs text-slate-400 mt-1">
+                The next occurrence is created automatically once this one has passed, with
+                routes pre-filled from each child&apos;s default van.
+              </p>
+            )}
+          </div>
           <div className="md:col-span-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Create Event"}
@@ -115,7 +146,14 @@ export default function EventsPage() {
         {events.map((e) => (
           <div key={e.id} className="card flex justify-between items-center flex-wrap gap-2">
             <div>
-              <p className="font-semibold text-lg">{e.eventName}</p>
+              <p className="font-semibold text-lg">
+                {e.eventName}{" "}
+                {e.recurrence !== "NONE" && (
+                  <span className="text-xs font-medium text-brand-600 bg-brand-50 rounded px-2 py-0.5 align-middle">
+                    {RECURRENCE_LABELS[e.recurrence]}
+                  </span>
+                )}
+              </p>
               <p className="text-slate-500 text-sm">
                 {new Date(e.eventDate).toLocaleDateString(undefined, {
                   weekday: "long",
