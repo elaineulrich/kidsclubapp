@@ -48,6 +48,12 @@ model User {
   activeStatus Boolean  @default(true)
   createdDate  DateTime @default(now())
 
+  /// Set once the invited user picks their own password; null means the invite is still pending
+  /// (passwordHash holds an unusable placeholder until then, so login can't succeed early).
+  passwordSetAt        DateTime?
+  inviteTokenHash      String?   @unique
+  inviteTokenExpiresAt DateTime?
+
   attendanceCheckIns Attendance[] @relation("CheckedInByUser")
 }
 

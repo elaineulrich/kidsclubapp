@@ -9,17 +9,29 @@ type StaffUser = {
   role: "ADMIN" | "VOLUNTEER";
   activeStatus: boolean;
   createdDate: string;
+  invitePending: boolean;
 };
 
-const emptyForm = { name: "", email: "", password: "", role: "VOLUNTEER" as "ADMIN" | "VOLUNTEER" };
+type InviteResult = {
+  email: string;
+  invite: { sent: boolean; error?: string };
+  inviteUrl: string;
+};
+
+const emptyInviteForm = { name: "", email: "", role: "VOLUNTEER" as "ADMIN" | "VOLUNTEER" };
+const emptyEditForm = { name: "", role: "VOLUNTEER" as "ADMIN" | "VOLUNTEER", password: "" };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [inviteForm, setInviteForm] = useState(emptyInviteForm);
+  const [editForm, setEditForm] = useState(emptyEditForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [inviteResult, setInviteResult] = useState<InviteResult | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; result: InviteResult } | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/users");
@@ -32,24 +44,52 @@ export default function UsersPage() {
 
   function startEdit(u: StaffUser) {
     setEditingId(u.id);
-    setForm({ name: u.name, email: u.email, password: "", role: u.role });
+    setEditForm({ name: u.name, role: u.role, password: "" });
     setError("");
+    setInviteResult(null);
     setShowForm(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function startInvite() {
+    setEditingId(null);
+    setInviteForm(emptyInviteForm);
+    setError("");
+    setInviteResult(null);
+    setShowForm(true);
+  }
+
+  async function handleInviteSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const url = editingId ? `/api/users/${editingId}` : "/api/users";
-    const method = editingId ? "PUT" : "POST";
-    const body = editingId
-      ? { name: form.name, role: form.role, ...(form.password ? { password: form.password } : {}) }
-      : form;
-    const res = await fetch(url, {
-      method,
+    const res = await fetch("/api/users", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(inviteForm),
+    });
+    const data = await res.json().catch(() => ({}));
+    setLoading(false);
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
+      return;
+    }
+    setInviteResult({ email: inviteForm.email, invite: data.invite, inviteUrl: data.inviteUrl });
+    setInviteForm(emptyInviteForm);
+    load();
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const res = await fetch(`/api/users/${editingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        role: editForm.role,
+        ...(editForm.password ? { password: editForm.password } : {}),
+      }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -57,7 +97,6 @@ export default function UsersPage() {
       setError(data.error || "Something went wrong");
       return;
     }
-    setForm(emptyForm);
     setEditingId(null);
     setShowForm(false);
     load();
@@ -83,55 +122,107 @@ export default function UsersPage() {
     load();
   }
 
+  async function resendInvite(u: StaffUser) {
+    setResendingId(u.id);
+    setResendResult(null);
+    const res = await fetch(`/api/users/${u.id}/resend-invite`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    setResendingId(null);
+    if (!res.ok) {
+      alert(data.error || "Could not resend invite");
+      return;
+    }
+    setResendResult({ id: u.id, result: { email: u.email, invite: data.invite, inviteUrl: data.inviteUrl } });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-900">Staff Accounts</h1>
         <button
           className="btn-primary"
-          onClick={() => {
-            setForm(emptyForm);
-            setEditingId(null);
-            setError("");
-            setShowForm((s) => !s);
-          }}
+          onClick={() => (showForm ? setShowForm(false) : startInvite())}
         >
-          {showForm ? "Cancel" : "+ Create Account"}
+          {showForm ? "Cancel" : "+ Invite User"}
         </button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+      {showForm && editingId === null && (
+        <form onSubmit={handleInviteSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
           {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
           <div>
             <label className="label">Name</label>
-            <input className="input" required value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className="input" required value={inviteForm.name}
+              onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })} />
           </div>
           <div>
             <label className="label">Email</label>
-            <input className="input" type="email" required disabled={!!editingId} value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">{editingId ? "New Password (leave blank to keep current)" : "Password"}</label>
-            <input className="input" type="password" required={!editingId} minLength={8} value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            <input className="input" type="email" required value={inviteForm.email}
+              onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} />
           </div>
           <div>
             <label className="label">Role</label>
-            <select className="input" value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
+            <select className="input" value={inviteForm.role}
+              onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
               <option value="VOLUNTEER">Volunteer (Check-In)</option>
               <option value="ADMIN">Admin</option>
             </select>
           </div>
           <div className="md:col-span-2">
             <button type="submit" className="btn-primary" disabled={loading}>
-              {editingId ? "Save Changes" : "Create Account"}
+              {loading ? "Sending Invite..." : "Send Invite"}
+            </button>
+            <p className="text-xs text-slate-400 mt-1">
+              They&apos;ll get an email with a link to set their own password.
+            </p>
+          </div>
+        </form>
+      )}
+
+      {showForm && editingId !== null && (
+        <form onSubmit={handleEditSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+          {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
+          <div>
+            <label className="label">Name</label>
+            <input className="input" required value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Role</label>
+            <select className="input" value={editForm.role}
+              onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
+              <option value="VOLUNTEER">Volunteer (Check-In)</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Reset Password (optional)</label>
+            <input className="input" type="password" minLength={8} value={editForm.password}
+              placeholder="Leave blank to keep current"
+              onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>
+      )}
+
+      {inviteResult && (
+        <div className="card space-y-1">
+          {inviteResult.invite.sent ? (
+            <p className="text-sm text-emerald-600">✓ Invite emailed to {inviteResult.email}</p>
+          ) : (
+            <>
+              <p className="text-sm text-amber-600">
+                Couldn&apos;t send the invite email{inviteResult.invite.error ? `: ${inviteResult.invite.error}` : ""}.
+                Share this link manually instead:
+              </p>
+              <code className="text-xs bg-slate-100 rounded px-2 py-1 break-all block">{inviteResult.inviteUrl}</code>
+            </>
+          )}
+        </div>
       )}
 
       <div className="space-y-3">
@@ -139,11 +230,31 @@ export default function UsersPage() {
           <div key={u.id} className={`card flex justify-between flex-wrap gap-2 ${!u.activeStatus ? "opacity-50" : ""}`}>
             <div>
               <p className="font-semibold text-lg">
-                {u.name} {!u.activeStatus && <span className="text-sm text-slate-400">(inactive)</span>}
+                {u.name}
+                {!u.activeStatus && <span className="text-sm text-slate-400"> (inactive)</span>}
+                {u.invitePending && <span className="text-sm text-amber-600 font-medium"> · Invite Pending</span>}
               </p>
               <p className="text-slate-500 text-sm">{u.email} · {u.role}</p>
+              {resendResult?.id === u.id && (
+                resendResult.result.invite.sent ? (
+                  <p className="text-sm text-emerald-600 mt-1">✓ Invite re-sent</p>
+                ) : (
+                  <div className="mt-1 space-y-1">
+                    <p className="text-sm text-amber-600">
+                      Couldn&apos;t email it{resendResult.result.invite.error ? `: ${resendResult.result.invite.error}` : ""}.
+                      Share this link manually:
+                    </p>
+                    <code className="text-xs bg-slate-100 rounded px-2 py-1 break-all block">{resendResult.result.inviteUrl}</code>
+                  </div>
+                )
+              )}
             </div>
             <div className="flex gap-2 items-start">
+              {u.invitePending && (
+                <button className="btn-secondary" disabled={resendingId === u.id} onClick={() => resendInvite(u)}>
+                  {resendingId === u.id ? "Sending..." : "Resend Invite"}
+                </button>
+              )}
               <button className="btn-secondary" onClick={() => startEdit(u)}>Edit</button>
               <button className="btn-secondary" onClick={() => toggleActive(u)}>
                 {u.activeStatus ? "Deactivate" : "Reactivate"}

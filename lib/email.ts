@@ -35,3 +35,35 @@ export async function sendRouteEmail(
     return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
   }
 }
+
+export type SendInviteEmailResult = { sent: boolean; error?: string };
+
+export async function sendInviteEmail(
+  to: string,
+  name: string,
+  inviteUrl: string
+): Promise<SendInviteEmailResult> {
+  if (!resend) {
+    return { sent: false, error: "Email isn't configured (missing RESEND_API_KEY)" };
+  }
+
+  const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: "You're invited to Haven Kids Club",
+      html: `
+        <p>Hi ${name},</p>
+        <p>You've been invited to join the Haven Kids Club admin app. Click below to set your password and get started:</p>
+        <p><a href="${inviteUrl}">${inviteUrl}</a></p>
+        <p>This link expires in 7 days.</p>
+      `,
+    });
+    if (error) return { sent: false, error: error.message };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}

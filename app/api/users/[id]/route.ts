@@ -24,7 +24,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       name,
       role: role ?? undefined,
       activeStatus: activeStatus ?? undefined,
-      passwordHash: password ? await bcrypt.hash(password, 10) : undefined,
+      ...(password
+        ? {
+            passwordHash: await bcrypt.hash(password, 10),
+            passwordSetAt: new Date(),
+            inviteTokenHash: null,
+            inviteTokenExpiresAt: null,
+          }
+        : {}),
     },
     select: {
       id: true,

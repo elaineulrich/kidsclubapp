@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { sendRouteEmail } from "@/lib/email";
 import { getOrgTimezone } from "@/lib/orgTime";
+import { getBaseUrl } from "@/lib/baseUrl";
 
 // Marks an event's routes as reviewed/confirmed, emails each driver with an email
 // on file their route link, and returns a per-driver summary (including email
 // send status) so an admin can manually share with anyone who doesn't have email
 // set up - texting is a separate, deferred decision (needs an SMS provider).
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN"]);
   if (error) return error;
 
@@ -46,7 +47,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     }
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "";
+  const baseUrl = getBaseUrl(req);
   const timeZone = await getOrgTimezone();
   const eventDateLabel = new Intl.DateTimeFormat("en-US", {
     timeZone,
