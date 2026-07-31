@@ -187,11 +187,11 @@ export default function DriverRouteReviewPage() {
                               Picked Up
                             </button>
                             <button
-                              className="text-xs text-slate-400 underline"
+                              className="btn-warning px-3 py-2 text-sm"
                               disabled={busyStopId === s.id}
                               onClick={() => setStatus(s.id, "SKIPPED")}
                             >
-                              Not coming today
+                              😢 Not Coming Today
                             </button>
                           </div>
                         ) : (

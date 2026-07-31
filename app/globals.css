@@ -28,6 +28,9 @@ body {
   .btn-success {
     @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
   }
+  .btn-warning {
+    @apply btn bg-orange-500 text-white hover:bg-orange-600;
+  }
   .card {
     @apply rounded-2xl bg-white p-4 shadow-sm border border-slate-200;
   }
