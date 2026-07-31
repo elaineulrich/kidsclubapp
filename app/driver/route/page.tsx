@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 
@@ -91,6 +92,7 @@ function RouteCard({ r }: { r: RouteSummary }) {
 }
 
 export default function DriverRoutesPage() {
+  const { data: session } = useSession();
   const [data, setData] = useState<RoutesData | null>(null);
 
   const load = useCallback(async () => {
@@ -116,7 +118,9 @@ export default function DriverRoutesPage() {
     <main className="min-h-screen bg-slate-50 px-3 py-4">
       <div className="max-w-md mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-900">{greeting()}</h1>
+          <h1 className="text-xl font-bold text-slate-900">
+            {greeting()}{session?.user?.name ? `, ${session.user.name.split(" ")[0]}` : ""}!
+          </h1>
           <SignOutButton />
         </div>
 

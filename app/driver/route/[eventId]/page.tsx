@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import { navigateUrl, fullRouteUrl, embedRouteUrl } from "@/lib/maps";
@@ -77,15 +77,22 @@ function Confetti() {
   );
 }
 
-function CelebrationModal({ kind, onContinue, onStartCheckout }: {
+function CelebrationModal({ kind, onClose, churchNavigateUrl }: {
   kind: "checkin" | "checkout";
-  onContinue: () => void;
-  onStartCheckout: (() => void) | null;
+  onClose: () => void;
+  churchNavigateUrl: string | null;
 }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center px-4">
       <Confetti />
       <div className="card max-w-sm w-full text-center space-y-4 relative z-[61]">
+        <button
+          className="absolute top-2 right-2 text-slate-400 hover:text-slate-700 text-xl leading-none p-2"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ✕
+        </button>
         <p className="text-4xl">🎉</p>
         <p className="text-xl font-bold text-emerald-600">
           {kind === "checkin" ? "Check-In Route Completed!" : "Check-Out Route Completed!"}
@@ -96,13 +103,19 @@ function CelebrationModal({ kind, onContinue, onStartCheckout }: {
             : "Every checked-in child has been checked out."}
         </p>
         <div className="space-y-2">
-          {onStartCheckout && (
-            <button className="btn-gradient w-full" onClick={onStartCheckout}>
-              Start Check-Out Route
-            </button>
+          {churchNavigateUrl && (
+            <a
+              href={churchNavigateUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-gradient w-full block text-center"
+              onClick={onClose}
+            >
+              🏠 Go Back to Church
+            </a>
           )}
-          <button className="btn-secondary w-full" onClick={onContinue}>
-            {onStartCheckout ? "Stay Here" : "Continue"}
+          <button className="btn-secondary w-full" onClick={onClose}>
+            Close
           </button>
         </div>
       </div>
@@ -113,7 +126,6 @@ function CelebrationModal({ kind, onContinue, onStartCheckout }: {
 function DriverRouteReviewInner() {
   const params = useParams<{ eventId: string }>();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const mode: Mode = searchParams.get("mode") === "checkout" ? "checkout" : "checkin";
 
   const [data, setData] = useState<RouteData | null>(null);
@@ -222,15 +234,8 @@ function DriverRouteReviewInner() {
       {celebration && (
         <CelebrationModal
           kind={celebration}
-          onContinue={() => setCelebration(null)}
-          onStartCheckout={
-            celebration === "checkin" && interactive
-              ? () => {
-                  setCelebration(null);
-                  router.push(`/driver/route/${data.event.id}?mode=checkout`);
-                }
-              : null
-          }
+          onClose={() => setCelebration(null)}
+          churchNavigateUrl={data.churchAddress ? navigateUrl(data.churchAddress) : null}
         />
       )}
       <div className="max-w-md mx-auto space-y-4">
@@ -361,7 +366,7 @@ function DriverRouteReviewInner() {
                                 disabled={busyStopId === s.id}
                                 onClick={() => setStatus(s.id, "PICKED_UP")}
                               >
-                                Checked In
+                                Check In
                               </button>
                               <button
                                 className="btn-warning px-3 py-2 text-sm"
@@ -394,7 +399,7 @@ function DriverRouteReviewInner() {
                               disabled={busyStopId === s.id}
                               onClick={() => setStatus(s.id, "COMPLETED")}
                             >
-                              Checked Out
+                              Check Out
                             </button>
                           ) : (
                             <span className="text-slate-400 text-sm shrink-0">Not checked out</span>
