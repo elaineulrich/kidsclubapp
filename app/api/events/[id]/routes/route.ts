@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 
-// GET: returns vans with their current stop list for this event, plus
-// unassigned pickup-required children with a suggested van based on their
-// default van (falls back to their most recent prior assignment if they
-// don't have a default set).
+// GET: returns vans with their current stop list for this event, plus every active
+// pickup-required child with a suggested van based on their default van (falls
+// back to their most recent prior assignment if they don't have a default set).
+// This includes children who ARE currently assigned - the admin page filters
+// those out client-side against its own live edit state, so removing someone
+// from a van shows them back in "Unassigned" immediately, without needing to
+// publish and reload to see the server's view catch up.
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN"]);
   if (error) return error;
@@ -26,10 +29,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     orderBy: { vanName: "asc" },
   });
 
-  const assignedChildIds = new Set(
-    vans.flatMap((v) => v.routeAssignments.map((a) => a.childId))
-  );
-
   const pickupChildren = await prisma.child.findMany({
     where: { activeStatus: true, pickupRequired: true },
     include: { family: true, defaultVan: true },
@@ -38,8 +37,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const unassigned = [];
   for (const child of pickupChildren) {
-    if (assignedChildIds.has(child.id)) continue;
-
     let suggestedVanId = child.defaultVanId;
     let suggestedVanName = child.defaultVan?.vanName ?? null;
 

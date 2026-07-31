@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { getOrgTimezone, zonedMidnightUtc } from "@/lib/orgTime";
-import { ensureUpcomingOccurrences, populateDefaultRoutesForEvent } from "@/lib/recurringEvents";
+import { ensureUpcomingOccurrences } from "@/lib/recurringEvents";
 import { Recurrence } from "@prisma/client";
 
 export async function GET() {
@@ -32,6 +32,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid recurrence" }, { status: 400 });
   }
 
+  // Manually created events start fully unassigned so an admin reviews and builds
+  // the roster themselves (the "usually rides X" suggestion is still there to make
+  // that fast) - only auto-generated recurring occurrences self-populate, since
+  // there's no one present to review those.
   const event = await prisma.event.create({
     data: {
       eventName,
@@ -41,8 +45,6 @@ export async function POST(req: NextRequest) {
       recurrence: recurrence || "NONE",
     },
   });
-
-  await populateDefaultRoutesForEvent(event.id);
 
   return NextResponse.json(event, { status: 201 });
 }
