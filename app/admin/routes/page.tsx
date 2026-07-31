@@ -36,6 +36,7 @@ function RoutesPageInner() {
   const [saved, setSaved] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [confirmResult, setConfirmResult] = useState<ConfirmResult | null>(null);
+  const [editMode, setEditMode] = useState(true);
 
   useEffect(() => {
     fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
@@ -72,6 +73,11 @@ function RoutesPageInner() {
     setAssignments(initial);
     setOriginalAssigned(originalIds);
     setSaved(false);
+    // A route that's already been published (has saved assignments) opens locked,
+    // so a glance doesn't risk an accidental drag/remove - editing needs an
+    // explicit "Edit Routes" click. A brand-new, never-published event just opens
+    // straight into editing since there's nothing to protect yet.
+    setEditMode(originalIds.size === 0);
   }, [eventId]);
 
   useEffect(() => {
@@ -138,6 +144,10 @@ function RoutesPageInner() {
     load();
   }
 
+  function cancelEdit() {
+    load();
+  }
+
   async function confirmRoutes() {
     if (!eventId) return;
     setConfirming(true);
@@ -168,52 +178,67 @@ function RoutesPageInner() {
         </select>
       </div>
 
-      <div className="card">
-        <h2 className="font-semibold mb-2">Unassigned ({unassignedRemaining.length})</h2>
-        {unassignedRemaining.length === 0 ? (
-          <p className="text-slate-400 text-sm">Everyone is assigned to a van.</p>
-        ) : (
-          <ul className="space-y-2">
-            {unassignedRemaining.map((u) => (
-              <li key={u.childId} className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2 last:border-0">
-                <div>
-                  <p className="font-medium">{u.childName}</p>
-                  <p className="text-sm text-slate-500">
-                    {u.parentName} &middot; {u.address}
-                    {u.suggestedVanName && (
-                      <span className="text-brand-600"> &middot; usually rides {u.suggestedVanName}</span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {u.suggestedVanId && (
-                    <button
-                      className="btn-secondary"
-                      onClick={() => assignChildToVan(u.childId, u.childName, u.suggestedVanId!)}
-                    >
-                      Use {u.suggestedVanName} ✓
-                    </button>
-                  )}
-                  <select
-                    className="input w-auto"
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (e.target.value) assignChildToVan(u.childId, u.childName, e.target.value);
-                    }}
-                  >
-                    <option value="" disabled>Assign to van...</option>
-                    {vans.map((v) => (
-                      <option key={v.id} value={v.id}>{v.vanName}</option>
-                    ))}
-                  </select>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {!editMode && (
+        <div className="card bg-slate-50 flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <p className="font-semibold text-slate-700">✓ Published</p>
+            <p className="text-sm text-slate-500">
+              This route is locked to avoid accidental changes.
+              {unassignedRemaining.length > 0 && ` ${unassignedRemaining.length} child${unassignedRemaining.length === 1 ? "" : "ren"} still unassigned.`}
+            </p>
+          </div>
+          <button className="btn-primary" onClick={() => setEditMode(true)}>Edit Routes</button>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {editMode && (
+        <div className="card">
+          <h2 className="font-semibold mb-2">Unassigned ({unassignedRemaining.length})</h2>
+          {unassignedRemaining.length === 0 ? (
+            <p className="text-slate-400 text-sm">Everyone is assigned to a van.</p>
+          ) : (
+            <ul className="space-y-2">
+              {unassignedRemaining.map((u) => (
+                <li key={u.childId} className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2 last:border-0">
+                  <div>
+                    <p className="font-medium">{u.childName}</p>
+                    <p className="text-sm text-slate-500">
+                      {u.parentName} &middot; {u.address}
+                      {u.suggestedVanName && (
+                        <span className="text-brand-600"> &middot; usually rides {u.suggestedVanName}</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {u.suggestedVanId && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => assignChildToVan(u.childId, u.childName, u.suggestedVanId!)}
+                      >
+                        Use {u.suggestedVanName} ✓
+                      </button>
+                    )}
+                    <select
+                      className="input w-auto"
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) assignChildToVan(u.childId, u.childName, e.target.value);
+                      }}
+                    >
+                      <option value="" disabled>Assign to van...</option>
+                      {vans.map((v) => (
+                        <option key={v.id} value={v.id}>{v.vanName}</option>
+                      ))}
+                    </select>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!editMode ? "opacity-60" : ""}`}>
         {vans.map((van) => {
           const stops = stopsForVan(van.id);
           return (
@@ -229,11 +254,13 @@ function RoutesPageInner() {
                   {stops.map((s, i) => (
                     <li key={s.childId} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0">
                       <span>{i + 1}. {s.childName}</span>
-                      <div className="flex gap-1">
-                        <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, -1)} disabled={i === 0}>↑</button>
-                        <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, 1)} disabled={i === stops.length - 1}>↓</button>
-                        <button className="btn-danger px-2 py-1 text-sm" onClick={() => unassignChild(s.childId)}>Remove</button>
-                      </div>
+                      {editMode && (
+                        <div className="flex gap-1">
+                          <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, -1)} disabled={i === 0}>↑</button>
+                          <button className="btn-secondary px-2 py-1 text-sm" onClick={() => moveStop(van.id, s.childId, 1)} disabled={i === stops.length - 1}>↓</button>
+                          <button className="btn-danger px-2 py-1 text-sm" onClick={() => unassignChild(s.childId)}>Remove</button>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ol>
@@ -243,12 +270,17 @@ function RoutesPageInner() {
         })}
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <button className="btn-primary" onClick={publish} disabled={saving}>
-          {saving ? "Publishing..." : "Publish Routes"}
-        </button>
-        {saved && <span className="text-emerald-600 font-medium">Routes published ✓</span>}
-      </div>
+      {editMode && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <button className="btn-primary" onClick={publish} disabled={saving}>
+            {saving ? "Saving..." : originalAssigned.size > 0 ? "Update Routes" : "Publish Routes"}
+          </button>
+          {originalAssigned.size > 0 && (
+            <button className="btn-secondary" onClick={cancelEdit} disabled={saving}>Cancel</button>
+          )}
+          {saved && <span className="text-emerald-600 font-medium">Routes saved ✓</span>}
+        </div>
+      )}
 
       <div className="card space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
