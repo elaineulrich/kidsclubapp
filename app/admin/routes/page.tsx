@@ -18,7 +18,13 @@ type Stop = { childId: string; childName: string; vanId: string; stopOrder: numb
 type EventDetail = { id: string; eventName: string; routesConfirmedAt: string | null };
 type ConfirmResult = {
   routesConfirmedAt: string;
-  drivers: { driver: { id: string; name: string; phone: string }; vanName: string | null; stopCount: number; routePath: string }[];
+  drivers: {
+    driver: { id: string; name: string; phone: string; email: string | null };
+    vanName: string | null;
+    stopCount: number;
+    routePath: string;
+    email: { sent: boolean; error?: string };
+  }[];
 };
 
 function RoutesPageInner() {
@@ -154,8 +160,11 @@ function RoutesPageInner() {
     const res = await fetch(`/api/events/${eventId}/confirm`, { method: "POST" });
     setConfirming(false);
     if (res.ok) {
-      setConfirmResult(await res.json());
-      load();
+      const result = await res.json();
+      // load() clears confirmResult (it's the initial-load reset), so it must run
+      // before we set the result we actually want the page to show.
+      await load();
+      setConfirmResult(result);
     }
   }
 
@@ -300,13 +309,22 @@ function RoutesPageInner() {
         {confirmResult && (
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <p className="text-sm text-slate-500">
-              Share each driver&apos;s link below (e.g. paste into a group text) - automatic texting isn&apos;t set up yet.
+              Drivers with an email on file were emailed their route link automatically. For
+              anyone else, share the link below manually (e.g. paste into a group text) -
+              automatic texting isn&apos;t set up yet.
             </p>
             {confirmResult.drivers.map((d) => (
               <div key={d.driver.id} className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 pb-2 last:border-0">
                 <div>
                   <p className="font-medium">{d.driver.name} {d.vanName && `· ${d.vanName}`}</p>
                   <p className="text-sm text-slate-500">{d.driver.phone} · {d.stopCount} stop{d.stopCount === 1 ? "" : "s"}</p>
+                  {d.email.sent ? (
+                    <p className="text-sm text-emerald-600">✓ Emailed {d.driver.email}</p>
+                  ) : (
+                    <p className="text-sm text-amber-600">
+                      {d.driver.email ? `Email failed: ${d.email.error}` : "No email on file"}
+                    </p>
+                  )}
                 </div>
                 <code className="text-xs bg-slate-100 rounded px-2 py-1 break-all">
                   {typeof window !== "undefined" ? window.location.origin : ""}{d.routePath}

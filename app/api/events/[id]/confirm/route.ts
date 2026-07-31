@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { sendRouteEmail } from "@/lib/email";
+import { getOrgTimezone } from "@/lib/orgTime";
 
-// Marks an event's routes as reviewed/confirmed, and returns a per-driver summary
-// (name, phone, stop count, and the path to their route) for sharing - e.g. pasting
-// into a group text - until real SMS sending is wired up.
+// Marks an event's routes as reviewed/confirmed, emails each driver with an email
+// on file their route link, and returns a per-driver summary (including email
+// send status) so an admin can manually share with anyone who doesn't have email
+// set up - texting is a separate, deferred decision (needs an SMS provider).
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN"]);
   if (error) return error;
@@ -22,7 +25,13 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     include: { driver: true, van: true },
   });
 
-  const byDriver = new Map<string, { driver: { id: string; name: string; phone: string }; vanName: string | null; stopCount: number }>();
+  type DriverSummary = {
+    driver: { id: string; name: string; phone: string; email: string | null };
+    vanName: string | null;
+    stopCount: number;
+  };
+
+  const byDriver = new Map<string, DriverSummary>();
   for (const a of assignments) {
     if (!a.driver) continue;
     const existing = byDriver.get(a.driver.id);
@@ -30,17 +39,38 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       existing.stopCount += 1;
     } else {
       byDriver.set(a.driver.id, {
-        driver: { id: a.driver.id, name: a.driver.name, phone: a.driver.phone },
+        driver: { id: a.driver.id, name: a.driver.name, phone: a.driver.phone, email: a.driver.email },
         vanName: a.van?.vanName ?? null,
         stopCount: 1,
       });
     }
   }
 
-  const drivers = Array.from(byDriver.values()).map((d) => ({
-    ...d,
-    routePath: `/driver/route/${params.id}`,
-  }));
+  const baseUrl = process.env.NEXTAUTH_URL?.replace(/\/$/, "") ?? "";
+  const timeZone = await getOrgTimezone();
+  const eventDateLabel = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(event.eventDate);
+
+  const drivers = await Promise.all(
+    Array.from(byDriver.values()).map(async (d) => {
+      const routePath = `/driver/route/${params.id}`;
+      if (!d.driver.email) {
+        return { ...d, routePath, email: { sent: false, error: "No email on file" } };
+      }
+      const email = await sendRouteEmail(
+        d.driver.email,
+        d.driver.name,
+        event.eventName,
+        eventDateLabel,
+        `${baseUrl}${routePath}`
+      );
+      return { ...d, routePath, email };
+    })
+  );
 
   return NextResponse.json({ routesConfirmedAt: new Date().toISOString(), drivers });
 }
