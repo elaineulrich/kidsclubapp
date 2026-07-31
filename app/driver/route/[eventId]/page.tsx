@@ -26,6 +26,22 @@ type RouteData = {
   churchAddress: string;
 };
 
+// Cycles through a fixed color per stop number, so a driver can match a stop card to its
+// pin on the map at a glance. (The embedded map itself uses Google's default pin styling -
+// matching pin colors would need the Static Maps API, which requires a Google Cloud API key.)
+const STOP_COLORS = [
+  "bg-red-500",
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-lime-600",
+  "bg-emerald-500",
+  "bg-teal-500",
+  "bg-blue-500",
+  "bg-indigo-500",
+  "bg-purple-500",
+  "bg-pink-500",
+];
+
 export default function DriverRouteReviewPage() {
   const params = useParams<{ eventId: string }>();
   const [data, setData] = useState<RouteData | null>(null);
@@ -137,8 +153,12 @@ export default function DriverRouteReviewPage() {
               {stopGroups.map((group, i) => (
                 <div key={group.address} className="card space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm text-slate-400">Stop {i + 1}</p>
+                    <div className="space-y-1">
+                      <span
+                        className={`inline-block rounded-md px-2 py-1 text-xs font-bold text-white ${STOP_COLORS[i % STOP_COLORS.length]}`}
+                      >
+                        STOP {i + 1}
+                      </span>
                       <p className="text-slate-700 font-medium">{group.address}</p>
                     </div>
                     {interactive && (
