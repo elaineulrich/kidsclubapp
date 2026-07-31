@@ -8,7 +8,7 @@ type Child = {
   id: string;
   childName: string;
   birthday: string | null;
-  grade: string | null;
+  age: number | null;
   medicalNotes: string | null;
   pickupRequired: boolean;
   pickupNotes: string | null;
@@ -21,7 +21,7 @@ const emptyForm = {
   familyId: "",
   childName: "",
   birthday: "",
-  grade: "",
+  age: "",
   medicalNotes: "",
   pickupRequired: false,
   pickupNotes: "",
@@ -59,7 +59,7 @@ function ChildrenPageInner() {
       familyId: c.family.id,
       childName: c.childName,
       birthday: c.birthday ? c.birthday.slice(0, 10) : "",
-      grade: c.grade ?? "",
+      age: c.age !== null ? String(c.age) : "",
       medicalNotes: c.medicalNotes ?? "",
       pickupRequired: c.pickupRequired,
       pickupNotes: c.pickupNotes ?? "",
@@ -150,9 +150,9 @@ function ChildrenPageInner() {
               onChange={(e) => setForm({ ...form, birthday: e.target.value })} />
           </div>
           <div>
-            <label className="label">Grade</label>
-            <input className="input" value={form.grade}
-              onChange={(e) => setForm({ ...form, grade: e.target.value })} />
+            <label className="label">Age</label>
+            <input className="input" type="number" min="0" max="18" value={form.age}
+              onChange={(e) => setForm({ ...form, age: e.target.value })} />
           </div>
           <div className="md:col-span-2">
             <label className="label">Medical Notes / Allergies</label>
@@ -197,7 +197,7 @@ function ChildrenPageInner() {
                   {c.childName} {!c.activeStatus && <span className="text-sm text-slate-400">(inactive)</span>}
                 </p>
                 <p className="text-slate-500 text-sm">Parent: {c.family.parentName}</p>
-                {c.grade && <p className="text-slate-500 text-sm">Grade: {c.grade}</p>}
+                {c.age !== null && <p className="text-slate-500 text-sm">Age: {c.age}</p>}
                 {c.medicalNotes && <p className="text-red-600 text-sm">Medical: {c.medicalNotes}</p>}
                 {c.pickupRequired && (
                   <p className="text-slate-500 text-sm">

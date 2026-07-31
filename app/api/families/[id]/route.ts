@@ -20,14 +20,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const body = await req.json();
   const {
-    parentName, phone, email, address, city, state, zip,
+    parentName, phone, email, address, addressLine2, city, state, zip,
     emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
   } = body;
 
   const family = await prisma.family.update({
     where: { id: params.id },
     data: {
-      parentName, phone, email, address, city, state, zip,
+      parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
     },
   });

@@ -9,7 +9,7 @@ import SignOutButton from "@/components/SignOutButton";
 type SearchResult = {
   id: string;
   childName: string;
-  grade: string | null;
+  age: number | null;
   medicalNotes: string | null;
   parentName: string;
   parentPhone: string;
@@ -144,7 +144,7 @@ export default function CheckInPage() {
               <p className="text-2xl font-bold">{selected.childName}</p>
               <p className="text-slate-500">Parent: {selected.parentName}</p>
               <p className="text-slate-500">{selected.parentPhone}</p>
-              {selected.grade && <p className="text-slate-500">Grade: {selected.grade}</p>}
+              {selected.age !== null && <p className="text-slate-500">Age: {selected.age}</p>}
               {selected.medicalNotes && (
                 <p className="text-red-600 font-medium mt-2">⚠ {selected.medicalNotes}</p>
               )}

@@ -51,6 +51,9 @@ model Family {
   phone                        String
   email                        String?
   address                      String
+  /// Apartment/suite/unit number, kept separate from `address` so it doesn't get lost
+  /// or mangled when building driver navigation links for multi-unit buildings.
+  addressLine2                 String?
   city                         String
   state                        String
   zip                          String
@@ -67,7 +70,7 @@ model Child {
   familyId         String
   childName        String
   birthday         DateTime?
-  grade            String?
+  age              Int?
   medicalNotes     String?
   pickupRequired   Boolean   @default(false)
   pickupNotes      String?

@@ -9,6 +9,7 @@ type Family = {
   phone: string;
   email: string | null;
   address: string;
+  addressLine2: string | null;
   city: string;
   state: string;
   zip: string;
@@ -23,6 +24,7 @@ const emptyForm = {
   phone: "",
   email: "",
   address: "",
+  addressLine2: "",
   city: "",
   state: "",
   zip: "",
@@ -55,6 +57,7 @@ export default function FamiliesPage() {
       phone: f.phone,
       email: f.email ?? "",
       address: f.address,
+      addressLine2: f.addressLine2 ?? "",
       city: f.city,
       state: f.state,
       zip: f.zip,
@@ -128,10 +131,15 @@ export default function FamiliesPage() {
             <input className="input" type="email" value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
-          <div className="md:col-span-2">
+          <div>
             <label className="label">Address</label>
             <input className="input" required value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Apt/Suite/Unit #</label>
+            <input className="input" placeholder="e.g. Apt 2B" value={form.addressLine2}
+              onChange={(e) => setForm({ ...form, addressLine2: e.target.value })} />
           </div>
           <div>
             <label className="label">City</label>
@@ -180,7 +188,9 @@ export default function FamiliesPage() {
               <div>
                 <p className="font-semibold text-lg">{f.parentName}</p>
                 <p className="text-slate-500 text-sm">{f.phone} {f.email ? `· ${f.email}` : ""}</p>
-                <p className="text-slate-500 text-sm">{f.address}, {f.city}, {f.state} {f.zip}</p>
+                <p className="text-slate-500 text-sm">
+                  {f.address}{f.addressLine2 ? ` ${f.addressLine2}` : ""}, {f.city}, {f.state} {f.zip}
+                </p>
                 {(f.emergencyContactName || f.emergencyContactPhone) && (
                   <p className="text-slate-500 text-sm">
                     Emergency: {[f.emergencyContactName, f.emergencyContactPhone, f.emergencyContactRelationship]

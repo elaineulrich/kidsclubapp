@@ -42,6 +42,7 @@ type FamilyReport = {
   phone: string;
   email: string | null;
   address: string;
+  addressLine2: string | null;
   city: string;
   state: string;
   zip: string;
@@ -197,7 +198,9 @@ export default function ReportsPage() {
             <div key={f.id} className="card">
               <p className="font-semibold">{f.parentName}</p>
               <p className="text-sm text-slate-500">{f.phone} {f.email ? `· ${f.email}` : ""}</p>
-              <p className="text-sm text-slate-500">{f.address}, {f.city}, {f.state} {f.zip}</p>
+              <p className="text-sm text-slate-500">
+                {f.address}{f.addressLine2 ? ` ${f.addressLine2}` : ""}, {f.city}, {f.state} {f.zip}
+              </p>
               {(f.emergencyContactName || f.emergencyContactPhone) && (
                 <p className="text-sm text-slate-500">
                   Emergency: {[f.emergencyContactName, f.emergencyContactPhone, f.emergencyContactRelationship]

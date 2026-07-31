@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    parentName, phone, email, address, city, state, zip,
+    parentName, phone, email, address, addressLine2, city, state, zip,
     emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
   } = body;
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const family = await prisma.family.create({
     data: {
-      parentName, phone, email, address, city, state, zip,
+      parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
     },
   });

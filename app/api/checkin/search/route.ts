@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   const results = children.map((c) => ({
     id: c.id,
     childName: c.childName,
-    grade: c.grade,
+    age: c.age,
     medicalNotes: c.medicalNotes,
     parentName: c.family.parentName,
     parentPhone: c.family.phone,

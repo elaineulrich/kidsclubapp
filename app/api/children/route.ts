@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-  const { familyId, childName, birthday, grade, medicalNotes, pickupRequired, pickupNotes, bestContactPhone } = body;
+  const { familyId, childName, birthday, age, medicalNotes, pickupRequired, pickupNotes, bestContactPhone } = body;
 
   if (!familyId || !childName) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       familyId,
       childName,
       birthday: birthday ? new Date(birthday) : null,
-      grade,
+      age: age ? Number(age) : null,
       medicalNotes,
       pickupRequired: !!pickupRequired,
       pickupNotes,

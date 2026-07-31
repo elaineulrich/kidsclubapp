@@ -34,7 +34,11 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     childId: a.childId,
     childName: a.child.childName,
     parentName: a.child.family.parentName,
-    address: `${a.child.family.address}, ${a.child.family.city}, ${a.child.family.state} ${a.child.family.zip}`,
+    address: [
+      a.child.family.address,
+      a.child.family.addressLine2,
+      `${a.child.family.city}, ${a.child.family.state} ${a.child.family.zip}`,
+    ].filter(Boolean).join(", "),
     pickupNotes: a.child.pickupNotes,
     vanName: a.van?.vanName ?? null,
   }));

@@ -35,6 +35,7 @@ async function main() {
       phone: "555-010-0001",
       email: "sarah.smith@example.com",
       address: "123 Main Street",
+      addressLine2: "Apt 2B",
       city: "Anytown",
       state: "ST",
       zip: "00000",
@@ -46,7 +47,7 @@ async function main() {
           {
             childName: "Noah Smith",
             birthday: new Date("2016-04-12"),
-            grade: "3rd",
+            age: 10,
             pickupRequired: true,
             pickupNotes: "Dog outside",
           },
@@ -69,8 +70,8 @@ async function main() {
       emergencyContactRelationship: "Spouse",
       children: {
         create: [
-          { childName: "Sarah Jones", birthday: new Date("2015-08-02"), grade: "4th", pickupRequired: true },
-          { childName: "Emma Jones", birthday: new Date("2017-01-20"), grade: "2nd", pickupRequired: true },
+          { childName: "Sarah Jones", birthday: new Date("2015-08-02"), age: 10, pickupRequired: true },
+          { childName: "Emma Jones", birthday: new Date("2017-01-20"), age: 9, pickupRequired: true },
         ],
       },
     },
@@ -90,8 +91,8 @@ async function main() {
       emergencyContactRelationship: "Spouse",
       children: {
         create: [
-          { childName: "Caleb Brown", birthday: new Date("2014-11-05"), grade: "5th", pickupRequired: true },
-          { childName: "Lily Brown", birthday: new Date("2018-03-15"), grade: "1st", pickupRequired: true },
+          { childName: "Caleb Brown", birthday: new Date("2014-11-05"), age: 11, pickupRequired: true },
+          { childName: "Lily Brown", birthday: new Date("2018-03-15"), age: 8, pickupRequired: true },
         ],
       },
     },
