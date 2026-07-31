@@ -1,27 +1,25 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
-import { navigateUrl, fullRouteUrl } from "@/lib/maps";
 
-type Stop = {
-  id: string;
-  stopOrder: number;
-  status: "UNASSIGNED" | "ASSIGNED" | "PICKED_UP" | "COMPLETED";
-  childId: string;
-  childName: string;
-  parentName: string;
-  address: string;
-  pickupNotes: string | null;
-  vanName: string | null;
+type RouteSummary = {
+  eventId: string;
+  eventName: string;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  stopCount: number;
+  pickedUpCount: number;
+  timing: "current" | "upcoming" | "past";
+  startUrl?: string;
 };
 
-type RouteData = {
-  event: { id: string; eventName: string; eventDate: string } | null;
-  driver: { id: string; name: string } | null;
-  stops: Stop[];
-  churchAddress: string;
+type RoutesData = {
+  current: RouteSummary[];
+  upcoming: RouteSummary[];
+  past: RouteSummary[];
 };
 
 function greeting() {
@@ -31,10 +29,37 @@ function greeting() {
   return "Good Evening";
 }
 
-export default function DriverRoutePage() {
-  const { data: session } = useSession();
-  const [data, setData] = useState<RouteData | null>(null);
-  const [busyStopId, setBusyStopId] = useState<string | null>(null);
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+function RouteCard({ r }: { r: RouteSummary }) {
+  return (
+    <div className="card space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold text-lg">{r.eventName}</p>
+        <span className="text-sm text-slate-400">{formatDate(r.eventDate)}</span>
+      </div>
+      <p className="text-slate-500 text-sm">
+        {r.startTime}–{r.endTime} · {r.stopCount} stop{r.stopCount === 1 ? "" : "s"}
+        {r.timing !== "upcoming" && ` · ${r.pickedUpCount}/${r.stopCount} picked up`}
+      </p>
+      <div className="flex gap-2 pt-1">
+        <Link href={`/driver/route/${r.eventId}`} className="btn-secondary flex-1 text-center">
+          Review Route
+        </Link>
+        {r.timing === "current" && r.startUrl && (
+          <a href={r.startUrl} target="_blank" rel="noopener noreferrer" className="btn-primary flex-1 text-center">
+            Start Route
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function DriverRoutesPage() {
+  const [data, setData] = useState<RoutesData | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/driver/route");
@@ -45,94 +70,45 @@ export default function DriverRoutePage() {
     load();
   }, [load]);
 
-  async function markPickedUp(stopId: string) {
-    setBusyStopId(stopId);
-    await fetch("/api/driver/route", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignmentId: stopId, status: "PICKED_UP" }),
-    });
-    setBusyStopId(null);
-    load();
-  }
-
   if (!data) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-500">Loading route...</p>
+        <p className="text-slate-500">Loading routes...</p>
       </main>
     );
   }
 
-  if (!data.event) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <h1 className="text-xl font-bold mb-2">No Route Today</h1>
-          <p className="text-slate-500 mb-4">There is no event scheduled today, or you have no assigned stops.</p>
-          <SignOutButton />
-        </div>
-      </main>
-    );
-  }
-
-  const vanName = data.stops[0]?.vanName ?? "Van";
-  const fullRoute = fullRouteUrl(data.churchAddress, data.stops.map((s) => s.address));
+  const hasAnyRoutes = data.current.length + data.upcoming.length + data.past.length > 0;
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-6">
-      <div className="max-w-md mx-auto space-y-4">
+      <div className="max-w-md mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">
-              {greeting()} {data.driver?.name}
-            </h1>
-            <p className="text-slate-500 text-sm">{vanName} Pickup Route</p>
-          </div>
+          <h1 className="text-xl font-bold text-slate-900">{greeting()}</h1>
           <SignOutButton />
         </div>
 
-        {data.stops.length === 0 ? (
-          <p className="text-slate-500">You have no stops assigned for today.</p>
-        ) : (
-          <>
-            <div className="space-y-3">
-              {data.stops.map((s, i) => (
-                <div key={s.id} className="card">
-                  <p className="text-sm text-slate-400">Stop {i + 1}</p>
-                  <p className="text-xl font-bold">{s.childName}</p>
-                  <p className="text-slate-600">{s.address}</p>
-                  <p className="text-slate-500 text-sm">Parent: {s.parentName}</p>
-                  {s.pickupNotes && <p className="text-amber-600 text-sm">Notes: {s.pickupNotes}</p>}
-                  {s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
-                    <p className="text-emerald-600 font-semibold mt-2">✓ Picked Up</p>
-                  ) : (
-                    <div className="flex gap-2 mt-3">
-                      <a
-                        href={navigateUrl(s.address)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-primary flex-1"
-                      >
-                        NAVIGATE
-                      </a>
-                      <button
-                        className="btn-success flex-1"
-                        disabled={busyStopId === s.id}
-                        onClick={() => markPickedUp(s.id)}
-                      >
-                        Picked Up
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+        {!hasAnyRoutes && <p className="text-slate-500">You have no routes assigned.</p>}
 
-            <a href={fullRoute} target="_blank" rel="noopener noreferrer" className="btn-primary w-full block text-center">
-              START FULL ROUTE
-            </a>
-          </>
+        {data.current.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Today</h2>
+            {data.current.map((r) => <RouteCard key={r.eventId} r={r} />)}
+          </section>
+        )}
+
+        {data.upcoming.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Upcoming</h2>
+            {data.upcoming.map((r) => <RouteCard key={r.eventId} r={r} />)}
+          </section>
+        )}
+
+        {data.past.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Past</h2>
+            {data.past.map((r) => <RouteCard key={r.eventId} r={r} />)}
+          </section>
         )}
       </div>
     </main>
