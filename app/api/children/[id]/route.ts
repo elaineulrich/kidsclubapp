@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { syncChildToNewDefaultVan } from "@/lib/recurringEvents";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER"]);
@@ -38,6 +39,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       activeStatus: activeStatus ?? undefined,
     },
   });
+
+  if (defaultVanId) {
+    await syncChildToNewDefaultVan(child.id, defaultVanId);
+  }
 
   return NextResponse.json(child);
 }

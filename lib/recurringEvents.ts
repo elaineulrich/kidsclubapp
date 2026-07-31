@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Recurrence } from "@prisma/client";
+import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
 
 // Assigns every active, pickup-required child who has a default van set to that van
 // for this event, unless they already have an assignment (e.g. an admin manually
@@ -38,6 +39,42 @@ export async function populateDefaultRoutesForEvent(eventId: string) {
         driverId: child.defaultVan.driverId,
         stopOrder: nextOrder,
         status: "ASSIGNED",
+      },
+    });
+  }
+}
+
+// When a child's default van changes, moves them to the new van in any event that's
+// today or upcoming and hasn't been confirmed yet - so the change is visible on
+// routes already generated, not just future events created after this point. Past
+// events, confirmed events, and stops the child/driver has already acted on
+// (picked up, marked not coming) are left alone.
+export async function syncChildToNewDefaultVan(childId: string, newVanId: string) {
+  const timeZone = await getOrgTimezone();
+
+  const assignments = await prisma.routeAssignment.findMany({
+    where: { childId, status: "ASSIGNED", vanId: { not: newVanId } },
+    include: { event: true },
+  });
+
+  const newVan = await prisma.van.findUnique({ where: { id: newVanId } });
+  if (!newVan) return;
+
+  for (const a of assignments) {
+    if (a.event.routesConfirmedAt) continue;
+    if (classifyDay(a.event.eventDate, timeZone) === "past") continue;
+
+    const maxOrder = await prisma.routeAssignment.aggregate({
+      where: { eventId: a.eventId, vanId: newVanId },
+      _max: { stopOrder: true },
+    });
+
+    await prisma.routeAssignment.update({
+      where: { id: a.id },
+      data: {
+        vanId: newVanId,
+        driverId: newVan.driverId,
+        stopOrder: (maxOrder._max.stopOrder ?? 0) + 1,
       },
     });
   }
