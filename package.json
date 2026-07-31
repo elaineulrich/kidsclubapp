@@ -1,8 +1,8 @@
 {
   "name": "kids-club-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
-  "description": "Kids Club Management & Transportation web application",
+  "description": "Haven Kids Club Management & Transportation web application",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
