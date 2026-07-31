@@ -129,6 +129,12 @@ function DriverRouteReviewInner() {
   const startUrl = fullRouteUrl(data.churchAddress, activeAddresses);
   const interactive = data.timing === "current";
 
+  const checkInComplete = data.stops.length > 0 && data.stops.every(
+    (s) => s.status === "PICKED_UP" || s.status === "COMPLETED" || s.status === "SKIPPED"
+  );
+  const checkedInStops = data.stops.filter((s) => s.status === "PICKED_UP" || s.status === "COMPLETED");
+  const checkOutComplete = checkedInStops.length > 0 && checkedInStops.every((s) => s.status === "COMPLETED");
+
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-4">
       <div className="max-w-md mx-auto space-y-4">
@@ -146,6 +152,22 @@ function DriverRouteReviewInner() {
           </div>
           <SignOutButton />
         </div>
+
+        {mode === "checkin" && checkInComplete && (
+          <div className="card bg-emerald-50 border-emerald-200 text-center space-y-2">
+            <p className="text-emerald-700 font-bold">✓ Check-In Route Completed!</p>
+            {interactive && (
+              <Link href={`/driver/route/${data.event.id}?mode=checkout`} className="btn-gradient w-full block text-center">
+                Start Check-Out Route
+              </Link>
+            )}
+          </div>
+        )}
+        {mode === "checkout" && checkOutComplete && (
+          <div className="card bg-emerald-50 border-emerald-200 text-center">
+            <p className="text-emerald-700 font-bold">🎉 Check-Out Route Completed!</p>
+          </div>
+        )}
 
         {data.stops.length === 0 ? (
           <p className="text-slate-500">No stops assigned for this route.</p>

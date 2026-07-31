@@ -11,7 +11,11 @@ type RouteSummary = {
   startTime: string;
   endTime: string;
   stopCount: number;
-  pickedUpCount: number;
+  checkedInCount: number;
+  checkedOutCount: number;
+  skippedCount: number;
+  checkInComplete: boolean;
+  checkOutComplete: boolean;
   timing: "current" | "upcoming" | "past";
 };
 
@@ -33,6 +37,10 @@ function formatDate(iso: string) {
 }
 
 function RouteCard({ r }: { r: RouteSummary }) {
+  const isCurrent = r.timing === "current";
+  const checkInDone = isCurrent && r.checkInComplete;
+  const checkOutDone = isCurrent && r.checkOutComplete;
+
   return (
     <div className="card space-y-2">
       <div className="flex items-center justify-between">
@@ -41,16 +49,35 @@ function RouteCard({ r }: { r: RouteSummary }) {
       </div>
       <p className="text-slate-500 text-sm">
         {r.startTime}–{r.endTime} · {r.stopCount} stop{r.stopCount === 1 ? "" : "s"}
-        {r.timing !== "upcoming" && ` · ${r.pickedUpCount}/${r.stopCount} checked in`}
+        {r.timing !== "upcoming" && ` · ${r.checkedInCount}/${r.stopCount} checked in`}
       </p>
+
+      {checkOutDone ? (
+        <p className="text-sm font-bold text-emerald-600">🎉 Check-Out Route Completed!</p>
+      ) : checkInDone ? (
+        <p className="text-sm font-bold text-emerald-600">✓ Check-In Route Completed - start Check-Out when ready</p>
+      ) : null}
+
       <div className="flex gap-2 pt-1">
-        {r.timing === "current" ? (
+        {isCurrent ? (
           <>
-            <Link href={`/driver/route/${r.eventId}?mode=checkin`} className="btn-primary flex-1 text-center">
-              Check-In Route
+            <Link
+              href={`/driver/route/${r.eventId}?mode=checkin`}
+              className={checkInDone ? "btn-secondary flex-1 text-center opacity-50" : "btn-primary flex-1 text-center"}
+            >
+              {checkInDone ? "✓ Checked In" : "Check-In Route"}
             </Link>
-            <Link href={`/driver/route/${r.eventId}?mode=checkout`} className="btn-secondary flex-1 text-center">
-              Check-Out Route
+            <Link
+              href={`/driver/route/${r.eventId}?mode=checkout`}
+              className={
+                checkOutDone
+                  ? "btn-secondary flex-1 text-center opacity-50"
+                  : checkInDone
+                  ? "btn-gradient flex-1 text-center"
+                  : "btn-secondary flex-1 text-center"
+              }
+            >
+              {checkOutDone ? "✓ Checked Out" : "Check-Out Route"}
             </Link>
           </>
         ) : (
