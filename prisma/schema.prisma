@@ -29,6 +29,7 @@ enum RouteStatus {
   ASSIGNED
   PICKED_UP
   COMPLETED
+  SKIPPED
 }
 
 /// Admin & Check-In Volunteer accounts (drivers authenticate separately via login code)

@@ -13,7 +13,6 @@ type RouteSummary = {
   stopCount: number;
   pickedUpCount: number;
   timing: "current" | "upcoming" | "past";
-  startUrl?: string;
 };
 
 type RoutesData = {
@@ -45,14 +44,12 @@ function RouteCard({ r }: { r: RouteSummary }) {
         {r.timing !== "upcoming" && ` · ${r.pickedUpCount}/${r.stopCount} picked up`}
       </p>
       <div className="flex gap-2 pt-1">
-        <Link href={`/driver/route/${r.eventId}`} className="btn-secondary flex-1 text-center">
-          Review Route
+        <Link
+          href={`/driver/route/${r.eventId}`}
+          className={r.timing === "current" ? "btn-primary flex-1 text-center" : "btn-secondary flex-1 text-center"}
+        >
+          {r.timing === "current" ? "Open Route" : "Review Route"}
         </Link>
-        {r.timing === "current" && r.startUrl && (
-          <a href={r.startUrl} target="_blank" rel="noopener noreferrer" className="btn-primary flex-1 text-center">
-            Start Route
-          </a>
-        )}
       </div>
     </div>
   );

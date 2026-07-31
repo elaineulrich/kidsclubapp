@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { fullRouteUrl } from "@/lib/maps";
 import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
 
 export async function GET() {
@@ -48,24 +47,8 @@ export async function GET() {
 
   routes.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
-  const current = routes.filter((r) => r.timing === "current");
-
-  const currentWithStartUrl = await Promise.all(
-    current.map(async (r) => {
-      const stops = await prisma.routeAssignment.findMany({
-        where: { eventId: r.eventId, driverId: session.user.id },
-        orderBy: { stopOrder: "asc" },
-        include: { child: { include: { family: true } } },
-      });
-      const addresses = stops.map(
-        (s) => `${s.child.family.address}, ${s.child.family.city}, ${s.child.family.state} ${s.child.family.zip}`
-      );
-      return { ...r, startUrl: fullRouteUrl(process.env.CHURCH_ADDRESS ?? "", addresses) };
-    })
-  );
-
   return NextResponse.json({
-    current: currentWithStartUrl,
+    current: routes.filter((r) => r.timing === "current"),
     upcoming: routes.filter((r) => r.timing === "upcoming"),
     past: routes.filter((r) => r.timing === "past").reverse(),
   });

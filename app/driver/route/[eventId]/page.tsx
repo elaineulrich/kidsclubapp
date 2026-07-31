@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
@@ -9,7 +9,7 @@ import { navigateUrl, fullRouteUrl, embedRouteUrl } from "@/lib/maps";
 type Stop = {
   id: string;
   stopOrder: number;
-  status: "UNASSIGNED" | "ASSIGNED" | "PICKED_UP" | "COMPLETED";
+  status: "UNASSIGNED" | "ASSIGNED" | "PICKED_UP" | "COMPLETED" | "SKIPPED";
   childId: string;
   childName: string;
   parentName: string;
@@ -46,16 +46,31 @@ export default function DriverRouteReviewPage() {
     load();
   }, [load]);
 
-  async function markPickedUp(stopId: string) {
+  async function setStatus(stopId: string, status: Stop["status"]) {
     setBusyStopId(stopId);
     await fetch(`/api/driver/route/${params.eventId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignmentId: stopId, status: "PICKED_UP" }),
+      body: JSON.stringify({ assignmentId: stopId, status }),
     });
     setBusyStopId(null);
     load();
   }
+
+  const stopGroups = useMemo(() => {
+    if (!data) return [];
+    const groups = new Map<string, Stop[]>();
+    for (const s of data.stops) {
+      const list = groups.get(s.address) ?? [];
+      list.push(s);
+      groups.set(s.address, list);
+    }
+    return Array.from(groups.entries()).map(([address, stops]) => ({
+      address,
+      stops: stops.sort((a, b) => a.stopOrder - b.stopOrder),
+      minOrder: Math.min(...stops.map((s) => s.stopOrder)),
+    })).sort((a, b) => a.minOrder - b.minOrder);
+  }, [data]);
 
   if (error) {
     return (
@@ -76,9 +91,11 @@ export default function DriverRouteReviewPage() {
     );
   }
 
-  const addresses = data.stops.map((s) => s.address);
-  const mapSrc = embedRouteUrl(data.churchAddress, addresses);
-  const startUrl = fullRouteUrl(data.churchAddress, addresses);
+  const activeAddresses = [...new Set(
+    data.stops.filter((s) => s.status !== "SKIPPED").map((s) => s.address)
+  )];
+  const mapSrc = embedRouteUrl(data.churchAddress, activeAddresses);
+  const startUrl = fullRouteUrl(data.churchAddress, activeAddresses);
   const interactive = data.timing === "current";
 
   return (
@@ -104,48 +121,85 @@ export default function DriverRouteReviewPage() {
                 <iframe
                   src={mapSrc}
                   title="Route map"
-                  className="w-full h-56 border-0"
+                  className="w-full h-80 border-0"
                   loading="lazy"
                 />
               </div>
             )}
 
-            <a href={startUrl} target="_blank" rel="noopener noreferrer" className="btn-primary w-full block text-center">
-              START ROUTE IN GOOGLE MAPS
-            </a>
+            {startUrl && (
+              <a href={startUrl} target="_blank" rel="noopener noreferrer" className="text-center text-sm text-brand-600 block">
+                Open full route in Google Maps ↗
+              </a>
+            )}
 
             <div className="space-y-3">
-              {data.stops.map((s, i) => (
-                <div key={s.id} className="card">
-                  <p className="text-sm text-slate-400">Stop {i + 1}</p>
-                  <p className="text-xl font-bold">{s.childName}</p>
-                  <p className="text-slate-600">{s.address}</p>
-                  <p className="text-slate-500 text-sm">Parent: {s.parentName}</p>
-                  {s.pickupNotes && <p className="text-amber-600 text-sm">Notes: {s.pickupNotes}</p>}
-
-                  {s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
-                    <p className="text-emerald-600 font-semibold mt-2">✓ Picked Up</p>
-                  ) : interactive ? (
-                    <div className="flex gap-2 mt-3">
+              {stopGroups.map((group, i) => (
+                <div key={group.address} className="card space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-slate-400">Stop {i + 1}</p>
+                      <p className="text-slate-700 font-medium">{group.address}</p>
+                    </div>
+                    {interactive && (
                       <a
-                        href={navigateUrl(s.address)}
+                        href={navigateUrl(group.address)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-secondary flex-1"
+                        className="btn-secondary shrink-0"
                       >
                         NAVIGATE
                       </a>
-                      <button
-                        className="btn-success flex-1"
-                        disabled={busyStopId === s.id}
-                        onClick={() => markPickedUp(s.id)}
-                      >
-                        Picked Up
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-slate-400 text-sm mt-2">Not picked up</p>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-slate-100">
+                    {group.stops.map((s) => (
+                      <div key={s.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{s.childName}</p>
+                          <p className="text-slate-500 text-sm">Parent: {s.parentName}</p>
+                          {s.pickupNotes && <p className="text-amber-600 text-sm">Notes: {s.pickupNotes}</p>}
+                        </div>
+
+                        {s.status === "PICKED_UP" || s.status === "COMPLETED" ? (
+                          <span className="text-emerald-600 font-semibold text-sm shrink-0">✓ Picked Up</span>
+                        ) : s.status === "SKIPPED" ? (
+                          <div className="text-right shrink-0">
+                            <p className="text-slate-400 text-sm">Not coming</p>
+                            {interactive && (
+                              <button
+                                className="text-xs text-brand-600 underline"
+                                disabled={busyStopId === s.id}
+                                onClick={() => setStatus(s.id, "ASSIGNED")}
+                              >
+                                Undo
+                              </button>
+                            )}
+                          </div>
+                        ) : interactive ? (
+                          <div className="flex flex-col gap-1 shrink-0">
+                            <button
+                              className="btn-success px-3 py-2 text-sm"
+                              disabled={busyStopId === s.id}
+                              onClick={() => setStatus(s.id, "PICKED_UP")}
+                            >
+                              Picked Up
+                            </button>
+                            <button
+                              className="text-xs text-slate-400 underline"
+                              disabled={busyStopId === s.id}
+                              onClick={() => setStatus(s.id, "SKIPPED")}
+                            >
+                              Not coming today
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-sm shrink-0">Not picked up</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

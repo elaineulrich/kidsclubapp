@@ -58,7 +58,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
   }
 
   const body = await req.json();
-  const { assignmentId, status } = body as { assignmentId: string; status: "PICKED_UP" | "COMPLETED" };
+  const { assignmentId, status } = body as {
+    assignmentId: string;
+    status: "PICKED_UP" | "COMPLETED" | "SKIPPED" | "ASSIGNED";
+  };
 
   const assignment = await prisma.routeAssignment.findUnique({ where: { id: assignmentId } });
   if (!assignment || assignment.driverId !== session.user.id || assignment.eventId !== params.eventId) {
