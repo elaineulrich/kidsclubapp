@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { getOrgTimezone, zonedMidnightUtc } from "@/lib/orgTime";
 
 export async function GET() {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER", "DRIVER"]);
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   const event = await prisma.event.create({
-    data: { eventName, eventDate: new Date(eventDate), startTime, endTime },
+    data: { eventName, eventDate: zonedMidnightUtc(eventDate, await getOrgTimezone()), startTime, endTime },
   });
 
   return NextResponse.json(event, { status: 201 });

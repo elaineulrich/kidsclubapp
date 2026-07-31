@@ -12,6 +12,12 @@ enum Role {
   VOLUNTEER
 }
 
+/// Single-row table for org-wide configuration set from the admin Settings page.
+model Setting {
+  id       String @id @default("singleton")
+  timezone String @default("America/Chicago")
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT

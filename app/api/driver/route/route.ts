@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fullRouteUrl } from "@/lib/maps";
+import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -10,8 +11,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const timeZone = await getOrgTimezone();
 
   const assignments = await prisma.routeAssignment.findMany({
     where: { driverId: session.user.id },
@@ -32,13 +32,7 @@ export async function GET() {
   }
 
   const routes = Array.from(byEvent.values()).map(({ event, stopCount, pickedUpCount }) => {
-    const eventDate = new Date(event.eventDate);
-    eventDate.setHours(0, 0, 0, 0);
-    const timing = eventDate.getTime() === startOfToday.getTime()
-      ? "current"
-      : eventDate < startOfToday
-      ? "past"
-      : "upcoming";
+    const timing = classifyDay(event.eventDate, timeZone);
 
     return {
       eventId: event.id,

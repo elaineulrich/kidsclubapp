@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
 
 export async function GET(_req: NextRequest, { params }: { params: { eventId: string } }) {
   const session = await getServerSession(authOptions);
@@ -38,15 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     vanName: a.van?.vanName ?? null,
   }));
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const eventDate = new Date(event.eventDate);
-  eventDate.setHours(0, 0, 0, 0);
-  const timing = eventDate.getTime() === startOfToday.getTime()
-    ? "current"
-    : eventDate < startOfToday
-    ? "past"
-    : "upcoming";
+  const timeZone = await getOrgTimezone();
+  const timing = classifyDay(event.eventDate, timeZone);
 
   return NextResponse.json({
     event,

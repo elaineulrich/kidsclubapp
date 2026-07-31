@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { getOrgTimezone, zonedMidnightUtc } from "@/lib/orgTime";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER", "DRIVER"]);
@@ -22,7 +23,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id: params.id },
     data: {
       eventName,
-      eventDate: eventDate ? new Date(eventDate) : undefined,
+      eventDate: eventDate ? zonedMidnightUtc(eventDate, await getOrgTimezone()) : undefined,
       startTime,
       endTime,
     },

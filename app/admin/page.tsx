@@ -1,20 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getOrgTimezone, todayRangeInTimezone } from "@/lib/orgTime";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
-  const endOfToday = new Date(startOfToday);
-  endOfToday.setDate(endOfToday.getDate() + 1);
+  const { start, end } = todayRangeInTimezone(await getOrgTimezone());
 
   const [familyCount, childCount, driverCount, vanCount, todaysEvent] = await Promise.all([
     prisma.family.count(),
     prisma.child.count({ where: { activeStatus: true } }),
     prisma.driver.count({ where: { activeStatus: true } }),
     prisma.van.count({ where: { activeStatus: true } }),
-    prisma.event.findFirst({ where: { eventDate: { gte: startOfToday, lt: endOfToday } } }),
+    prisma.event.findFirst({ where: { eventDate: { gte: start, lt: end } } }),
   ]);
 
   let presentCount = 0;
