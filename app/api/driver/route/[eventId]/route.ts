@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
-import { getOrSetCache, cacheDel } from "@/lib/redis";
-import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
+import { getOrSetCache } from "@/lib/redis";
+import { driverRouteDetailKey } from "@/lib/driverRouteCache";
+import { applyCheckAction, CheckAction } from "@/lib/attendanceSync";
 
 export async function GET(_req: NextRequest, { params }: { params: { eventId: string } }) {
   const session = await getServerSession(authOptions);
@@ -83,30 +84,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const updated = await prisma.routeAssignment.update({
-    where: { id: assignmentId },
-    data: { status },
-  });
+  const actionByStatus: Record<typeof status, CheckAction> = {
+    PICKED_UP: "in",
+    COMPLETED: "out",
+    SKIPPED: "skip",
+    ASSIGNED: "undo",
+  };
 
-  // PICKED_UP / COMPLETED double as "checked in" / "checked out" for the event
-  // itself - a driver picking a child up from home, or dropping them back off,
-  // is the same real-world event as the check-in desk marking them present or
-  // checked out, so keep the shared Attendance record in sync.
-  if (status === "PICKED_UP") {
-    await prisma.attendance.upsert({
-      where: { eventId_childId: { eventId: params.eventId, childId: assignment.childId } },
-      create: { eventId: params.eventId, childId: assignment.childId, checkInTime: new Date(), status: "PRESENT" },
-      update: { checkInTime: new Date(), status: "PRESENT", checkOutTime: null },
-    });
-  } else if (status === "COMPLETED") {
-    await prisma.attendance.upsert({
-      where: { eventId_childId: { eventId: params.eventId, childId: assignment.childId } },
-      create: { eventId: params.eventId, childId: assignment.childId, checkOutTime: new Date(), status: "CHECKED_OUT" },
-      update: { checkOutTime: new Date(), status: "CHECKED_OUT" },
-    });
-  }
-
-  await cacheDel(driverRouteListKey(session.user.id), driverRouteDetailKey(params.eventId, session.user.id));
+  // Also keeps the shared Attendance record in sync (and busts this driver's cached
+  // route) - a driver picking a child up from home, or dropping them back off, is the
+  // same real-world event as the check-in desk marking them present or checked out.
+  const { assignment: updated } = await applyCheckAction(params.eventId, assignment.childId, actionByStatus[status]);
 
   return NextResponse.json(updated);
 }
