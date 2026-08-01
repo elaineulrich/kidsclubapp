@@ -50,6 +50,10 @@ function CheckInRosterInner() {
 
   useEffect(() => {
     load();
+    // A driver working the same event's route can check kids in/out too - poll so
+    // this list picks that up without a manual refresh, same as the reverse.
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
   }, [load]);
 
   async function setStatus(childId: string, action: Action) {

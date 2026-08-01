@@ -53,6 +53,8 @@ export default function CheckInEventsPage() {
 
   useEffect(() => {
     load();
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
   }, [load]);
 
   if (!data) {

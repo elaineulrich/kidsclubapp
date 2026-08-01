@@ -146,6 +146,11 @@ function DriverRouteReviewInner() {
 
   useEffect(() => {
     load();
+    // A front-desk volunteer can check these same kids in/out too - poll so a driver
+    // sees that without needing to manually refresh (this also feeds the celebration
+    // modal above, so a route someone else finishes still gets celebrated here).
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
   }, [load]);
 
   async function setStatus(stopId: string, status: Stop["status"]) {
