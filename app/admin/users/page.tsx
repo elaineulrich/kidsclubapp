@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Modal from "@/components/Modal";
 
 type StaffUser = {
   id: string;
@@ -139,75 +140,78 @@ export default function UsersPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-900">Staff Accounts</h1>
-        <button
-          className="btn-primary"
-          onClick={() => (showForm ? setShowForm(false) : startInvite())}
-        >
-          {showForm ? "Cancel" : "+ Invite User"}
+        <button className="btn-primary" onClick={startInvite}>
+          + Invite User
         </button>
       </div>
 
-      {showForm && editingId === null && (
-        <form onSubmit={handleInviteSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
-          {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
-          <div>
-            <label className="label">Name</label>
-            <input className="input" required value={inviteForm.name}
-              onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Email</label>
-            <input className="input" type="email" required value={inviteForm.email}
-              onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Role</label>
-            <select className="input" value={inviteForm.role}
-              onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
-              <option value="VOLUNTEER">Volunteer (Check-In)</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Sending Invite..." : "Send Invite"}
-            </button>
-            <p className="text-xs text-slate-400 mt-1">
-              They&apos;ll get an email with a link to set their own password.
-            </p>
-          </div>
-        </form>
-      )}
-
-      {showForm && editingId !== null && (
-        <form onSubmit={handleEditSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
-          {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
-          <div>
-            <label className="label">Name</label>
-            <input className="input" required value={editForm.name}
-              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="label">Role</label>
-            <select className="input" value={editForm.role}
-              onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
-              <option value="VOLUNTEER">Volunteer (Check-In)</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Reset Password (optional)</label>
-            <input className="input" type="password" minLength={8} value={editForm.password}
-              placeholder="Leave blank to keep current"
-              onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
-          </div>
-          <div className="md:col-span-2">
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      )}
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editingId === null ? "Invite User" : "Edit Staff Account"}>
+        {editingId === null ? (
+          <form onSubmit={handleInviteSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
+            <div>
+              <label className="label">Name</label>
+              <input className="input" required value={inviteForm.name}
+                onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Email</label>
+              <input className="input" type="email" required value={inviteForm.email}
+                onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Role</label>
+              <select className="input" value={inviteForm.role}
+                onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
+                <option value="VOLUNTEER">Volunteer (Check-In)</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div className="md:col-span-2 flex gap-2 items-center flex-wrap">
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? "Sending Invite..." : "Send Invite"}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+                Cancel
+              </button>
+              <p className="text-xs text-slate-400 w-full">
+                They&apos;ll get an email with a link to set their own password.
+              </p>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleEditSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {error && <p className="md:col-span-2 text-sm text-red-600">{error}</p>}
+            <div>
+              <label className="label">Name</label>
+              <input className="input" required value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Role</label>
+              <select className="input" value={editForm.role}
+                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "ADMIN" | "VOLUNTEER" })}>
+                <option value="VOLUNTEER">Volunteer (Check-In)</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Reset Password (optional)</label>
+              <input className="input" type="password" minLength={8} value={editForm.password}
+                placeholder="Leave blank to keep current"
+                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} />
+            </div>
+            <div className="md:col-span-2 flex gap-2">
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
 
       {inviteResult && (
         <div className="card space-y-1">

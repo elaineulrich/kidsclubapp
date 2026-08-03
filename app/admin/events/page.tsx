@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Modal from "@/components/Modal";
 
 type Recurrence = "NONE" | "WEEKLY" | "BIWEEKLY";
 
@@ -88,15 +89,15 @@ export default function EventsPage() {
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
-            setShowForm((s) => !s);
+            setShowForm(true);
           }}
         >
-          {showForm ? "Cancel" : "+ Create Event"}
+          + Create Event
         </button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editingId ? "Edit Event" : "Create Event"}>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="md:col-span-2">
             <label className="label">Event Name</label>
             <input className="input" required value={form.eventName}
@@ -134,13 +135,16 @@ export default function EventsPage() {
               </p>
             )}
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Create Event"}
             </button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       <div className="space-y-3">
         {events.map((e) => (

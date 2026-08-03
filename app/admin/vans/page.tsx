@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Modal from "@/components/Modal";
 
 type Driver = { id: string; name: string };
 type Van = {
@@ -78,15 +79,15 @@ export default function VansPage() {
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
-            setShowForm((s) => !s);
+            setShowForm(true);
           }}
         >
-          {showForm ? "Cancel" : "+ Add Van"}
+          + Add Van
         </button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editingId ? "Edit Van" : "Add Van"}>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Van Name</label>
             <input className="input" required placeholder="Van 1" value={form.vanName}
@@ -107,13 +108,16 @@ export default function VansPage() {
               ))}
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Van"}
             </button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       <div className="space-y-3">
         {vans.map((v) => (

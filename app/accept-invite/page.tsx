@@ -11,7 +11,7 @@ function AcceptInviteInner() {
   const token = searchParams.get("token") ?? "";
 
   const [status, setStatus] = useState<"loading" | "invalid" | "ready" | "done">("loading");
-  const [invitee, setInvitee] = useState<{ name: string; email: string } | null>(null);
+  const [invitee, setInvitee] = useState<{ name: string; email: string; passwordAlreadySet: boolean } | null>(null);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -77,8 +77,13 @@ function AcceptInviteInner() {
         {status === "ready" && invitee && (
           <form onSubmit={handleSubmit} className="card space-y-4">
             <div className="text-center">
-              <p className="text-lg font-bold text-slate-900">Welcome, {invitee.name}!</p>
-              <p className="text-slate-500 text-sm">Set a password for {invitee.email}</p>
+              <p className="text-lg font-bold text-slate-900">
+                {invitee.passwordAlreadySet ? "Reset your password" : `Welcome, ${invitee.name}!`}
+              </p>
+              <p className="text-slate-500 text-sm">
+                {invitee.passwordAlreadySet ? "Choose a new password for " : "Set a password for "}
+                {invitee.email}
+              </p>
             </div>
             <div>
               <label className="label" htmlFor="password">Password</label>
@@ -110,7 +115,11 @@ function AcceptInviteInner() {
             {error && <p className="text-red-600 text-sm">{error}</p>}
 
             <button type="submit" className="btn-primary w-full" disabled={submitting}>
-              {submitting ? "Setting password..." : "Set Password & Continue"}
+              {submitting
+                ? "Saving..."
+                : invitee.passwordAlreadySet
+                ? "Reset Password & Continue"
+                : "Set Password & Continue"}
             </button>
           </form>
         )}

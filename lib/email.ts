@@ -69,6 +69,66 @@ export async function sendInviteEmail(
   }
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  name: string,
+  resetUrl: string
+): Promise<SendInviteEmailResult> {
+  if (!resend) {
+    return { sent: false, error: "Email isn't configured (missing RESEND_API_KEY)" };
+  }
+
+  const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: "Reset your Haven Kids Club password",
+      html: `
+        <p>Hi ${name},</p>
+        <p>Someone requested a password reset for your Haven Kids Club account. Click below to choose a new password:</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>This link expires in 7 days. If you didn't request this, you can ignore this email.</p>
+      `,
+    });
+    if (error) return { sent: false, error: error.message };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function sendDriverCodeEmail(
+  to: string,
+  name: string,
+  loginCode: string
+): Promise<SendInviteEmailResult> {
+  if (!resend) {
+    return { sent: false, error: "Email isn't configured (missing RESEND_API_KEY)" };
+  }
+
+  const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: "Your Haven Kids Club driver code",
+      html: `
+        <p>Hi ${name},</p>
+        <p>Here's your driver code for the Haven Kids Club driver portal:</p>
+        <p style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">${loginCode}</p>
+        <p>If you didn't request this, you can ignore this email.</p>
+      `,
+    });
+    if (error) return { sent: false, error: error.message };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
 export type RegistrationSubmission = {
   childName: string;
   childAge?: string;

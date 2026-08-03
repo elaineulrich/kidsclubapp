@@ -51,6 +51,8 @@ model User {
   /// Set once the invited user picks their own password; null means the invite is still pending
   /// (passwordHash holds an unusable placeholder until then, so login can't succeed early).
   passwordSetAt        DateTime?
+  /// Doubles as the forgot-password token: both flows send the user to the same
+  /// /accept-invite link and only differ in whether passwordSetAt was already set.
   inviteTokenHash      String?   @unique
   inviteTokenExpiresAt DateTime?
 
@@ -73,6 +75,13 @@ model Family {
   emergencyContactPhone        String?
   emergencyContactRelationship String?
   createdDate                  DateTime @default(now())
+
+  /// Geocoded once (lazily, the first time a route is auto-sorted by distance) and
+  /// reused after that - re-geocoding on every sort would hammer the free geocoding
+  /// service and violate its usage policy. Null until then, or if geocoding failed
+  /// (e.g. an address that doesn't resolve); cleared automatically if `address` changes.
+  lat Float?
+  lng Float?
 
   children Child[]
 }
