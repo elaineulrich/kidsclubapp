@@ -43,6 +43,8 @@ function RoutesPageInner() {
   const [confirming, setConfirming] = useState(false);
   const [confirmResult, setConfirmResult] = useState<ConfirmResult | null>(null);
   const [editMode, setEditMode] = useState(true);
+  const [sortingVanId, setSortingVanId] = useState<string | null>(null);
+  const [sortMessage, setSortMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
@@ -128,6 +130,54 @@ function RoutesPageInner() {
       return next;
     });
     setSaved(false);
+  }
+
+  async function autoSortVan(vanId: string) {
+    const stops = stopsForVan(vanId);
+    if (stops.length < 2 || !eventId) return;
+
+    setSortingVanId(vanId);
+    setSortMessage(null);
+    const res = await fetch(`/api/events/${eventId}/routes/distances`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childIds: stops.map((s) => s.childId) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSortingVanId(null);
+
+    if (!res.ok) {
+      setSortMessage(data.error || "Could not sort this van's stops");
+      return;
+    }
+
+    const distances: Record<string, number | null> = data.distances;
+    const unresolvedCount = stops.filter((s) => distances[s.childId] == null).length;
+
+    // Farthest from the church first; stops whose address couldn't be geocoded
+    // keep their relative order and sink to the end rather than breaking the sort.
+    const sorted = [...stops].sort((a, b) => {
+      const da = distances[a.childId];
+      const db = distances[b.childId];
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db - da;
+    });
+
+    setAssignments((prev) => {
+      const next = { ...prev };
+      sorted.forEach((s, i) => {
+        next[s.childId] = { ...next[s.childId], stopOrder: i + 1 };
+      });
+      return next;
+    });
+    setSaved(false);
+    setSortMessage(
+      unresolvedCount > 0
+        ? `Sorted, but couldn't determine the distance for ${unresolvedCount} stop${unresolvedCount === 1 ? "" : "s"} - left at the end.`
+        : null
+    );
   }
 
   async function publish() {
@@ -247,14 +297,29 @@ function RoutesPageInner() {
         </div>
       )}
 
+      {sortMessage && (
+        <p className="text-sm text-amber-600">{sortMessage}</p>
+      )}
+
       <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!editMode ? "opacity-60" : ""}`}>
         {vans.map((van) => {
           const stops = stopsForVan(van.id);
           return (
             <div key={van.id} className="card">
-              <h2 className="font-semibold mb-1">
-                {van.vanName} {van.driver ? `- ${van.driver.name}` : "(no driver)"}
-              </h2>
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h2 className="font-semibold">
+                  {van.vanName} {van.driver ? `- ${van.driver.name}` : "(no driver)"}
+                </h2>
+                {editMode && stops.length > 1 && (
+                  <button
+                    className="btn-secondary px-2 py-1 text-xs whitespace-nowrap"
+                    onClick={() => autoSortVan(van.id)}
+                    disabled={sortingVanId === van.id}
+                  >
+                    {sortingVanId === van.id ? "Sorting..." : "Auto-Sort by Distance"}
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-slate-400 mb-2">{stops.length} / {van.capacity} riders</p>
               {stops.length === 0 ? (
                 <p className="text-slate-400 text-sm">No stops assigned.</p>

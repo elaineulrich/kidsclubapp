@@ -24,11 +24,17 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
   } = body;
 
+  const existing = await prisma.family.findUnique({ where: { id: params.id }, select: { address: true } });
+  const addressChanged = existing && address !== undefined && address !== existing.address;
+
   const family = await prisma.family.update({
     where: { id: params.id },
     data: {
       parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+      // Stale coordinates are worse than none - force a re-geocode next time this
+      // family's route is auto-sorted.
+      ...(addressChanged ? { lat: null, lng: null } : {}),
     },
   });
 

@@ -74,6 +74,13 @@ model Family {
   emergencyContactRelationship String?
   createdDate                  DateTime @default(now())
 
+  /// Geocoded once (lazily, the first time a route is auto-sorted by distance) and
+  /// reused after that - re-geocoding on every sort would hammer the free geocoding
+  /// service and violate its usage policy. Null until then, or if geocoding failed
+  /// (e.g. an address that doesn't resolve); cleared automatically if `address` changes.
+  lat Float?
+  lng Float?
+
   children Child[]
 }
 
