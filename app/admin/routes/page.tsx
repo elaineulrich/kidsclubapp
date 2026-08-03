@@ -152,18 +152,14 @@ function RoutesPageInner() {
     }
 
     const distances: Record<string, number | null> = data.distances;
+    const order: string[] = data.order;
     const unresolvedCount = stops.filter((s) => distances[s.childId] == null).length;
 
-    // Farthest from the church first; stops whose address couldn't be geocoded
-    // keep their relative order and sink to the end rather than breaking the sort.
-    const sorted = [...stops].sort((a, b) => {
-      const da = distances[a.childId];
-      const db = distances[b.childId];
-      if (da == null && db == null) return 0;
-      if (da == null) return 1;
-      if (db == null) return -1;
-      return db - da;
-    });
+    // Order comes from the server as a nearest-neighbor route starting at the
+    // church, so stops that are physically close to each other end up adjacent
+    // in the route instead of just being ranked by distance from the church.
+    const byChildId = new Map(stops.map((s) => [s.childId, s]));
+    const sorted = order.map((id) => byChildId.get(id)).filter((s): s is Stop => !!s);
 
     setAssignments((prev) => {
       const next = { ...prev };

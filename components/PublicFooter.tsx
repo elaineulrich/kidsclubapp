@@ -33,7 +33,7 @@ export default function PublicFooter() {
           </p>
           <p className="text-sm text-brand-200 mt-2">
             <a
-              href="https://www.facebook.com/"
+              href="https://www.facebook.com/profile.php?id=61572336294311"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white"
