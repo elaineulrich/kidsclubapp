@@ -5,6 +5,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function DriverLoginPage() {
   const router = useRouter();
@@ -64,6 +65,12 @@ export default function DriverLoginPage() {
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Logging in..." : "LOGIN"}
           </button>
+
+          <div className="text-center">
+            <Link href="/driver/forgot-code" className="text-sm text-slate-500 hover:text-slate-800">
+              Forgot your code?
+            </Link>
+          </div>
         </form>
       </div>
     </main>

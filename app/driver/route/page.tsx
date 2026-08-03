@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
+import DriverAdminSwitchLink from "@/components/DriverAdminSwitchLink";
 
 type RouteSummary = {
   eventId: string;
@@ -123,7 +124,10 @@ export default function DriverRoutesPage() {
           <h1 className="text-xl font-bold text-slate-900">
             {greeting()}{session?.user?.name ? `, ${session.user.name.split(" ")[0]}` : ""}!
           </h1>
-          <SignOutButton />
+          <div className="flex items-center gap-3">
+            <DriverAdminSwitchLink />
+            <SignOutButton />
+          </div>
         </div>
 
         {!hasAnyRoutes && <p className="text-slate-500">You have no routes assigned.</p>}

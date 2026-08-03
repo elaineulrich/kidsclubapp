@@ -44,7 +44,24 @@ export const authOptions: NextAuthOptions = {
         });
         if (!driver || !driver.activeStatus) return null;
 
-        return { id: driver.id, name: driver.name, email: driver.email ?? "", role: "DRIVER" };
+        // Some drivers are also admins (e.g. a lead volunteer who also drives) - if this
+        // driver's email matches an active admin account, the driver UI can offer a
+        // one-click link to the login page to switch roles. This never grants admin
+        // access directly - switching still requires the admin password.
+        const linkedAdmin = driver.email
+          ? await prisma.user.findFirst({
+              where: { email: { equals: driver.email, mode: "insensitive" }, role: "ADMIN", activeStatus: true },
+              select: { id: true },
+            })
+          : null;
+
+        return {
+          id: driver.id,
+          name: driver.name,
+          email: driver.email ?? "",
+          role: "DRIVER",
+          canSwitchToAdmin: !!linkedAdmin,
+        };
       },
     }),
   ],
@@ -53,6 +70,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role as "ADMIN" | "VOLUNTEER" | "DRIVER";
+        token.canSwitchToAdmin = user.canSwitchToAdmin;
       }
       return token;
     },
@@ -60,6 +78,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.canSwitchToAdmin = token.canSwitchToAdmin;
       }
       return session;
     },

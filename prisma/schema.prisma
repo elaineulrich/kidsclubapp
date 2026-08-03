@@ -51,6 +51,8 @@ model User {
   /// Set once the invited user picks their own password; null means the invite is still pending
   /// (passwordHash holds an unusable placeholder until then, so login can't succeed early).
   passwordSetAt        DateTime?
+  /// Doubles as the forgot-password token: both flows send the user to the same
+  /// /accept-invite link and only differ in whether passwordSetAt was already set.
   inviteTokenHash      String?   @unique
   inviteTokenExpiresAt DateTime?
 
