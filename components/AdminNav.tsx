@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/families", label: "Families" },
   { href: "/admin/children", label: "Children" },
   { href: "/admin/events", label: "Events" },
+  { href: "/checkin", label: "Check-In" },
   { href: "/admin/drivers", label: "Drivers" },
   { href: "/admin/vans", label: "Vans" },
   { href: "/admin/routes", label: "Routes" },
@@ -28,7 +29,12 @@ export default function AdminNav() {
         <Link href="/admin" className="flex items-center">
           <Image src="/logo.png" alt="Haven Kids Club" width={104} height={42} priority />
         </Link>
-        <SignOutButton />
+        <div className="flex items-center gap-4">
+          <Link href="/driver" className="text-sm font-medium text-slate-500 hover:text-slate-800">
+            Switch to Driver
+          </Link>
+          <SignOutButton />
+        </div>
       </div>
       <nav className="max-w-6xl mx-auto px-3 pb-2 flex gap-1 overflow-x-auto">
         {links.map((l) => {
