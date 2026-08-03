@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import DriverAdminSwitchLink from "@/components/DriverAdminSwitchLink";
@@ -120,6 +121,8 @@ export default function DriverRoutesPage() {
   return (
     <main className="min-h-screen bg-slate-50 px-3 py-4">
       <div className="max-w-md mx-auto space-y-4">
+        <Image src="/logo.png" alt="Haven Kids Club" width={140} height={57} className="mx-auto" priority />
+
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-900">
             {greeting()}{session?.user?.name ? `, ${session.user.name.split(" ")[0]}` : ""}!
