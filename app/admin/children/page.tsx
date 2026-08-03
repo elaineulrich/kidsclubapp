@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Family = { id: string; parentName: string };
+type Family = { id: string; parentName: string; address: string };
 type Van = { id: string; vanName: string };
 type Child = {
   id: string;
@@ -39,21 +39,28 @@ function ChildrenPageInner() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [vans, setVans] = useState<Van[]>([]);
   const [q, setQ] = useState("");
+  const [familyFilter, setFamilyFilter] = useState("");
+  const [addressFilter, setAddressFilter] = useState("");
   const [showForm, setShowForm] = useState(!!preselectedFamilyId);
   const [form, setForm] = useState({ ...emptyForm, familyId: preselectedFamilyId });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (familyFilter) params.set("familyId", familyFilter);
+    if (addressFilter) params.set("address", addressFilter);
+
     const [childRes, familyRes, vanRes] = await Promise.all([
-      fetch(`/api/children${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+      fetch(`/api/children${params.toString() ? `?${params.toString()}` : ""}`),
       fetch(`/api/families`),
       fetch(`/api/vans`),
     ]);
     if (childRes.ok) setChildren(await childRes.json());
     if (familyRes.ok) setFamilies(await familyRes.json());
     if (vanRes.ok) setVans(await vanRes.json());
-  }, [q]);
+  }, [q, familyFilter, addressFilter]);
 
   useEffect(() => {
     load();
@@ -110,7 +117,12 @@ function ChildrenPageInner() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-slate-900">Children</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Children</h1>
+          <p className="text-slate-500 text-sm">
+            {children.length} {children.length === 1 ? "child" : "children"}
+          </p>
+        </div>
         <button
           className="btn-primary"
           onClick={() => {
@@ -123,12 +135,43 @@ function ChildrenPageInner() {
         </button>
       </div>
 
-      <input
-        className="input"
-        placeholder="Search by child name or parent name..."
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
+      <div className="flex flex-wrap gap-3">
+        <input
+          className="input flex-1 min-w-[200px]"
+          placeholder="Search by child name or parent name..."
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          className="input flex-1 min-w-[180px]"
+          value={familyFilter}
+          onChange={(e) => setFamilyFilter(e.target.value)}
+        >
+          <option value="">All families</option>
+          {families.map((f) => (
+            <option key={f.id} value={f.id}>{f.parentName}</option>
+          ))}
+        </select>
+        <input
+          className="input flex-1 min-w-[200px]"
+          placeholder="Filter by address..."
+          value={addressFilter}
+          onChange={(e) => setAddressFilter(e.target.value)}
+        />
+        {(q || familyFilter || addressFilter) && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setQ("");
+              setFamilyFilter("");
+              setAddressFilter("");
+            }}
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -214,6 +257,7 @@ function ChildrenPageInner() {
                   {c.childName} {!c.activeStatus && <span className="text-sm text-slate-400">(inactive)</span>}
                 </p>
                 <p className="text-slate-500 text-sm">Parent: {c.family.parentName}</p>
+                <p className="text-slate-500 text-sm">{c.family.address}</p>
                 {c.age !== null && <p className="text-slate-500 text-sm">Age: {c.age}</p>}
                 {c.medicalNotes && <p className="text-red-600 text-sm">Medical: {c.medicalNotes}</p>}
                 {c.pickupRequired && (

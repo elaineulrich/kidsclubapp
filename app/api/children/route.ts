@@ -8,10 +8,14 @@ export async function GET(req: NextRequest) {
 
   const q = req.nextUrl.searchParams.get("q")?.trim();
   const activeOnly = req.nextUrl.searchParams.get("activeOnly") === "true";
+  const familyId = req.nextUrl.searchParams.get("familyId")?.trim();
+  const address = req.nextUrl.searchParams.get("address")?.trim();
 
   const children = await prisma.child.findMany({
     where: {
       ...(activeOnly ? { activeStatus: true } : {}),
+      ...(familyId ? { familyId } : {}),
+      ...(address ? { family: { address: { contains: address, mode: "insensitive" } } } : {}),
       ...(q
         ? {
             OR: [
