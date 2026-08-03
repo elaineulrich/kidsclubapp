@@ -18,10 +18,7 @@ async function throttle() {
 
 export type LatLng = { lat: number; lng: number };
 
-// Geocodes a raw address string. Returns null if it can't be resolved (e.g. a typo'd
-// or incomplete address) rather than throwing - callers should treat that stop as
-// "unknown distance" and leave it in place rather than fail the whole sort.
-export async function geocodeAddress(address: string): Promise<LatLng | null> {
+async function geocodeOnce(address: string): Promise<LatLng | null> {
   await throttle();
 
   try {
@@ -36,6 +33,25 @@ export async function geocodeAddress(address: string): Promise<LatLng | null> {
   } catch {
     return null;
   }
+}
+
+// Rural Texas road abbreviations (FM286, CR105, RM12, ...) are usually written with no
+// space before the number, but Nominatim's parser only recognizes them with one
+// ("FM 286") - without this, an otherwise-valid address silently fails to geocode.
+function withSpacedRoadAbbreviation(address: string): string | null {
+  const normalized = address.replace(/\b(FM|RM|CR|SH|US|SL|SPUR|LOOP)(\d)/gi, "$1 $2");
+  return normalized !== address ? normalized : null;
+}
+
+// Geocodes a raw address string. Returns null if it can't be resolved (e.g. a typo'd
+// or incomplete address) rather than throwing - callers should treat that stop as
+// "unknown distance" and leave it in place rather than fail the whole sort.
+export async function geocodeAddress(address: string): Promise<LatLng | null> {
+  const result = await geocodeOnce(address);
+  if (result) return result;
+
+  const normalized = withSpacedRoadAbbreviation(address);
+  return normalized ? geocodeOnce(normalized) : null;
 }
 
 // The church address rarely changes and has nowhere natural to persist coordinates
