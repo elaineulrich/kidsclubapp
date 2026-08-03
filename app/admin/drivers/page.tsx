@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Modal from "@/components/Modal";
 
 type Driver = {
   id: string;
@@ -77,15 +78,15 @@ export default function DriversPage() {
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
-            setShowForm((s) => !s);
+            setShowForm(true);
           }}
         >
-          {showForm ? "Cancel" : "+ Add Driver"}
+          + Add Driver
         </button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editingId ? "Edit Driver" : "Add Driver"}>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Name</label>
             <input className="input" required value={form.name}
@@ -106,13 +107,16 @@ export default function DriversPage() {
             <input className="input" required placeholder="VAN1-4829" value={form.loginCode}
               onChange={(e) => setForm({ ...form, loginCode: e.target.value })} />
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Driver"}
             </button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       <div className="space-y-3">
         {drivers.map((d) => (

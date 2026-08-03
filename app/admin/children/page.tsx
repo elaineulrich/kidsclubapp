@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Modal from "@/components/Modal";
 
 type Family = { id: string; parentName: string; address: string };
 type Van = { id: string; vanName: string };
@@ -128,10 +129,10 @@ function ChildrenPageInner() {
           onClick={() => {
             setForm(emptyForm);
             setEditingId(null);
-            setShowForm((s) => !s);
+            setShowForm(true);
           }}
         >
-          {showForm ? "Cancel" : "+ Add Child"}
+          + Add Child
         </button>
       </div>
 
@@ -173,8 +174,8 @@ function ChildrenPageInner() {
         )}
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="card grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title={editingId ? "Edit Child" : "Add Child"}>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="label">Family</label>
             <select
@@ -240,13 +241,16 @@ function ChildrenPageInner() {
               ))}
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Child"}
             </button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>
+              Cancel
+            </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       <div className="space-y-3">
         {children.map((c) => (
