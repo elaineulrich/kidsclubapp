@@ -13,6 +13,7 @@ type Stop = {
   childId: string;
   childName: string;
   parentName: string;
+  parentPhone: string;
   address: string;
   pickupNotes: string | null;
   vanName: string | null;
@@ -45,6 +46,10 @@ const STOP_COLORS = [
 ];
 
 const CONFETTI_COLORS = ["#2f77c1", "#ffc004", "#ef4444", "#10b981", "#a855f7", "#f97316"];
+
+function telHref(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
 
 function Confetti() {
   const pieces = useMemo(
@@ -334,6 +339,11 @@ function DriverRouteReviewInner() {
                         <div>
                           <p className="font-semibold">{s.childName}</p>
                           <p className="text-slate-500 text-sm">Parent: {s.parentName}</p>
+                          {s.parentPhone && (
+                            <a href={telHref(s.parentPhone)} className="text-brand-600 text-sm font-medium">
+                              📞 {s.parentPhone}
+                            </a>
+                          )}
                           {s.pickupNotes && <p className="text-amber-600 text-sm">Notes: {s.pickupNotes}</p>}
                         </div>
 
