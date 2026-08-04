@@ -156,27 +156,27 @@ function CheckInRosterInner() {
                 <div>
                   <p className="font-semibold">{c.childName}</p>
                   <p className="text-slate-500 text-sm">
-                    Parent: {c.parentName}
+                    <span>Parent: {c.parentName}</span>
                     {c.parentPhone && (
                       <>
                         {" "}
-                        &middot;{" "}
-                        <a href={telHref(c.parentPhone)} className="text-brand-600 font-medium">
-                          📞 {c.parentPhone}
+                        <a href={telHref(c.parentPhone)} className="text-brand-600 font-medium whitespace-nowrap">
+                          📞&nbsp;{c.parentPhone}
                         </a>
                       </>
                     )}
                   </p>
                   {c.vanName && (
                     <p className="text-slate-500 text-sm">
-                      Van: {c.vanName}
-                      {c.driverName && ` (${c.driverName})`}
+                      <span>
+                        Van: {c.vanName}
+                        {c.driverName && ` (${c.driverName})`}
+                      </span>
                       {c.driverPhone && (
                         <>
                           {" "}
-                          &middot;{" "}
-                          <a href={telHref(c.driverPhone)} className="text-brand-600 font-medium">
-                            📞 {c.driverPhone}
+                          <a href={telHref(c.driverPhone)} className="text-brand-600 font-medium whitespace-nowrap">
+                            📞&nbsp;{c.driverPhone}
                           </a>
                         </>
                       )}
