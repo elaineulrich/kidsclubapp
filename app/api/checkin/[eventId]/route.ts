@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     where: { activeStatus: true },
     include: {
       family: true,
-      routeAssignments: { where: { eventId: params.eventId }, include: { van: true } },
+      routeAssignments: { where: { eventId: params.eventId }, include: { van: true, driver: true } },
       attendances: { where: { eventId: params.eventId } },
     },
     orderBy: { childName: "asc" },
@@ -39,6 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
       age: child.age,
       medicalNotes: child.medicalNotes,
       vanName: assignment?.van?.vanName ?? null,
+      driverName: assignment?.driver?.name ?? null,
+      driverPhone: assignment?.driver?.phone ?? null,
       status,
       checkInTime: attendance?.checkInTime ?? null,
       checkOutTime: attendance?.checkOutTime ?? null,

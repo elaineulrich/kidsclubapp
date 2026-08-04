@@ -15,6 +15,8 @@ type RosterChild = {
   age: number | null;
   medicalNotes: string | null;
   vanName: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
   status: CheckStatus;
   checkInTime: string | null;
   checkOutTime: string | null;
@@ -27,6 +29,10 @@ type RosterData = {
 
 type Mode = "checkin" | "checkout";
 type Action = "in" | "out" | "skip" | "undo";
+
+function telHref(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
 
 function CheckInRosterInner() {
   const params = useParams<{ eventId: string }>();
@@ -151,8 +157,31 @@ function CheckInRosterInner() {
                   <p className="font-semibold">{c.childName}</p>
                   <p className="text-slate-500 text-sm">
                     Parent: {c.parentName}
-                    {c.vanName && ` · ${c.vanName}`}
+                    {c.parentPhone && (
+                      <>
+                        {" "}
+                        &middot;{" "}
+                        <a href={telHref(c.parentPhone)} className="text-brand-600 font-medium">
+                          📞 {c.parentPhone}
+                        </a>
+                      </>
+                    )}
                   </p>
+                  {c.vanName && (
+                    <p className="text-slate-500 text-sm">
+                      Van: {c.vanName}
+                      {c.driverName && ` (${c.driverName})`}
+                      {c.driverPhone && (
+                        <>
+                          {" "}
+                          &middot;{" "}
+                          <a href={telHref(c.driverPhone)} className="text-brand-600 font-medium">
+                            📞 {c.driverPhone}
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
                   {c.medicalNotes && <p className="text-red-600 text-sm">⚠ {c.medicalNotes}</p>}
                 </div>
 
