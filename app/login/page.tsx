@@ -33,7 +33,9 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4 py-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <Image src="/logo.png" alt="Haven Kids Club" width={220} height={89} className="mx-auto mb-2" priority />
+          <Link href="/" className="inline-block">
+            <Image src="/logo.png" alt="Haven Kids Club" width={220} height={89} className="mx-auto mb-2" priority />
+          </Link>
           <p className="text-slate-500 mt-1">Admin &amp; Volunteer Login</p>
         </div>
 
