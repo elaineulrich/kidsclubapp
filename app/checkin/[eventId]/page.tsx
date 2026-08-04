@@ -30,6 +30,8 @@ type RosterData = {
 type Mode = "checkin" | "checkout";
 type Action = "in" | "out" | "skip" | "undo";
 
+const UNASSIGNED_KEY = "__unassigned__";
+
 function telHref(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
@@ -143,6 +145,7 @@ function CheckInRosterInner() {
   const [error, setError] = useState("");
   const [busyChildId, setBusyChildId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/checkin/${params.eventId}`);
@@ -189,9 +192,9 @@ function CheckInRosterInner() {
   }, [modeFiltered, search]);
 
   // Grouped by route/van (with the driver's call button once per group), since that's
-  // how check-in actually happens on the ground - a group at a time as each van arrives.
-  // Kids not on a route (direct drop-off) fall into their own group at the end.
-  const { routeGroups, unassigned } = useMemo(() => {
+  // how check-in actually happens on the ground - one route/tab at a time as each van
+  // arrives. Kids not on a route (direct drop-off) fall into their own "No Route" group.
+  const routeGroups = useMemo(() => {
     const groups = new Map<string, RouteGroup>();
     const unassigned: RosterChild[] = [];
     for (const c of visibleChildren) {
@@ -211,11 +214,28 @@ function CheckInRosterInner() {
       }
       groups.get(key)!.children.push(c);
     }
-    return {
-      routeGroups: Array.from(groups.values()).sort((a, b) => (a.vanName ?? "").localeCompare(b.vanName ?? "")),
-      unassigned,
-    };
+    const sorted = Array.from(groups.values()).sort((a, b) => (a.vanName ?? "").localeCompare(b.vanName ?? ""));
+    if (unassigned.length > 0) {
+      sorted.push({ key: UNASSIGNED_KEY, vanName: "No Route Assigned", driverName: null, driverPhone: null, children: unassigned });
+    }
+    return sorted;
   }, [visibleChildren]);
+
+  // Keep the selected tab valid as the roster/mode/search changes - default to the
+  // first route, and fall back if the current selection disappears (e.g. everyone
+  // on that van got checked out and the checkout view no longer shows them).
+  useEffect(() => {
+    if (routeGroups.length === 0) {
+      if (selectedRouteKey !== null) setSelectedRouteKey(null);
+      return;
+    }
+    if (!routeGroups.some((g) => g.key === selectedRouteKey)) {
+      setSelectedRouteKey(routeGroups[0].key);
+    }
+  }, [routeGroups, selectedRouteKey]);
+
+  const isSearching = search.trim().length > 0;
+  const selectedGroup = routeGroups.find((g) => g.key === selectedRouteKey) ?? null;
 
   if (error) {
     return (
@@ -278,20 +298,19 @@ function CheckInRosterInner() {
           <p className="text-slate-500">No one has been checked in yet.</p>
         ) : visibleChildren.length === 0 ? (
           <p className="text-slate-400 text-center mt-4">No matching children found.</p>
-        ) : (
+        ) : isSearching ? (
+          // While searching, skip the tabs entirely so a match on another route isn't
+          // hidden behind a tab the front-desk volunteer isn't currently on.
           <div className="space-y-4">
             {routeGroups.map((g) => (
               <div key={g.key} className="card p-0 overflow-hidden">
-                <div className="bg-brand-50 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap">
-                  <p className="font-semibold text-brand-800">
+                <div className={g.key === UNASSIGNED_KEY ? "bg-slate-100 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap" : "bg-brand-50 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap"}>
+                  <p className={g.key === UNASSIGNED_KEY ? "font-semibold text-slate-700" : "font-semibold text-brand-800"}>
                     {g.vanName}
                     {g.driverName && ` (${g.driverName})`}
                   </p>
                   {g.driverPhone && (
-                    <a
-                      href={telHref(g.driverPhone)}
-                      className="btn-secondary px-2 py-1 text-xs whitespace-nowrap"
-                    >
+                    <a href={telHref(g.driverPhone)} className="btn-secondary px-2 py-1 text-xs whitespace-nowrap">
                       📞 Call Driver
                     </a>
                   )}
@@ -303,14 +322,41 @@ function CheckInRosterInner() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3">
+              {routeGroups.map((g) => (
+                <button
+                  key={g.key}
+                  onClick={() => setSelectedRouteKey(g.key)}
+                  className={
+                    "shrink-0 px-3.5 py-2 rounded-full text-sm font-semibold whitespace-nowrap border " +
+                    (g.key === selectedRouteKey
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-slate-600 border-slate-200")
+                  }
+                >
+                  {g.vanName} ({g.children.length})
+                </button>
+              ))}
+            </div>
 
-            {unassigned.length > 0 && (
+            {selectedGroup && (
               <div className="card p-0 overflow-hidden">
-                <div className="bg-slate-100 px-3.5 py-2.5">
-                  <p className="font-semibold text-slate-700">No Route Assigned</p>
+                <div className={selectedGroup.key === UNASSIGNED_KEY ? "bg-slate-100 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap" : "bg-brand-50 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap"}>
+                  <p className={selectedGroup.key === UNASSIGNED_KEY ? "font-semibold text-slate-700" : "font-semibold text-brand-800"}>
+                    {selectedGroup.vanName}
+                    {selectedGroup.driverName && ` (${selectedGroup.driverName})`}
+                  </p>
+                  {selectedGroup.driverPhone && (
+                    <a href={telHref(selectedGroup.driverPhone)} className="btn-secondary px-2 py-1 text-xs whitespace-nowrap">
+                      📞 Call Driver
+                    </a>
+                  )}
                 </div>
                 <div className="divide-y divide-slate-100 px-3.5">
-                  {unassigned.map((c) => (
+                  {selectedGroup.children.map((c) => (
                     <ChildRow key={c.id} c={c} mode={mode} busyChildId={busyChildId} setStatus={setStatus} />
                   ))}
                 </div>
