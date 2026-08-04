@@ -169,6 +169,7 @@ export default function EventsPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <Link href={`/checkin/${e.id}`} className="btn-secondary">Check-In</Link>
               <Link href={`/admin/routes?eventId=${e.id}`} className="btn-secondary">Routes</Link>
               <button className="btn-secondary" onClick={() => startEdit(e)}>Edit</button>
               <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>

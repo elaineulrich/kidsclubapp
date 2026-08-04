@@ -6,7 +6,7 @@
  * Usage:
  *   npx tsx prisma/import-roster.ts /path/to/roster.xlsx
  *
- * The admin UI at /admin/import-export offers the same import (and an
+ * The admin UI at /admin/settings offers the same import (and an
  * export) without needing shell/DB access - prefer that day to day.
  */
 import { readFileSync } from "fs";

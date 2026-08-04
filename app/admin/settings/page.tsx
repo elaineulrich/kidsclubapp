@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SUPPORTED_TIMEZONES } from "@/lib/timezones";
+import ImportExportWidget from "@/components/ImportExportWidget";
 
 const TIMEZONE_LABELS: Record<string, string> = {
   "America/New_York": "Eastern Time",
@@ -39,10 +40,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4 max-w-md">
+    <div className="space-y-4 max-w-2xl">
       <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
 
-      <form onSubmit={handleSubmit} className="card space-y-3">
+      <form onSubmit={handleSubmit} className="card space-y-3 max-w-md">
         <div>
           <label className="label">Time Zone</label>
           <p className="text-sm text-slate-500 mb-2">
@@ -61,6 +62,8 @@ export default function SettingsPage() {
         </button>
         {saved && <span className="text-emerald-600 font-medium ml-3">Saved ✓</span>}
       </form>
+
+      <ImportExportWidget />
     </div>
   );
 }
