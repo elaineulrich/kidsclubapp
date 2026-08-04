@@ -46,6 +46,7 @@ async function buildRouteDetail(eventId: string, driverId: string) {
     childId: a.childId,
     childName: a.child.childName,
     parentName: a.child.family.parentName,
+    parentPhone: a.child.bestContactPhone || a.child.family.phone,
     address: [
       a.child.family.address,
       a.child.family.addressLine2,
