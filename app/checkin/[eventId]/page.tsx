@@ -34,6 +34,106 @@ function telHref(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
+type RouteGroup = {
+  key: string;
+  vanName: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
+  children: RosterChild[];
+};
+
+function ChildRow({
+  c,
+  mode,
+  busyChildId,
+  setStatus,
+}: {
+  c: RosterChild;
+  mode: Mode;
+  busyChildId: string | null;
+  setStatus: (childId: string, action: Action) => void;
+}) {
+  return (
+    <div className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+      <div>
+        <p className="font-semibold">{c.childName}</p>
+        <p className="text-slate-500 text-sm">Parent: {c.parentName}</p>
+        {c.medicalNotes && <p className="text-red-600 text-sm">⚠ {c.medicalNotes}</p>}
+        {c.parentPhone && (
+          <a
+            href={telHref(c.parentPhone)}
+            className="btn-secondary px-2 py-1 text-xs whitespace-nowrap inline-block mt-1.5"
+          >
+            📞 {c.parentPhone}
+          </a>
+        )}
+      </div>
+
+      {mode === "checkin" ? (
+        c.status === "CHECKED_IN" || c.status === "CHECKED_OUT" ? (
+          <div className="text-right shrink-0">
+            <p className="text-emerald-600 font-semibold text-sm">✓ Checked In</p>
+            <button
+              className="text-xs text-brand-600 underline"
+              disabled={busyChildId === c.id}
+              onClick={() => setStatus(c.id, "undo")}
+            >
+              Undo
+            </button>
+          </div>
+        ) : c.status === "SKIPPED" ? (
+          <div className="text-right shrink-0">
+            <p className="text-slate-400 text-sm">Not coming</p>
+            <button
+              className="text-xs text-brand-600 underline"
+              disabled={busyChildId === c.id}
+              onClick={() => setStatus(c.id, "undo")}
+            >
+              Undo
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 shrink-0">
+            <button
+              className="btn-success px-3 py-2 text-sm"
+              disabled={busyChildId === c.id}
+              onClick={() => setStatus(c.id, "in")}
+            >
+              Check In
+            </button>
+            <button
+              className="btn-warning px-3 py-2 text-sm"
+              disabled={busyChildId === c.id}
+              onClick={() => setStatus(c.id, "skip")}
+            >
+              😢 Not Coming Today
+            </button>
+          </div>
+        )
+      ) : c.status === "CHECKED_OUT" ? (
+        <div className="text-right shrink-0">
+          <p className="text-emerald-600 font-semibold text-sm">✓ Checked Out</p>
+          <button
+            className="text-xs text-brand-600 underline"
+            disabled={busyChildId === c.id}
+            onClick={() => setStatus(c.id, "in")}
+          >
+            Undo
+          </button>
+        </div>
+      ) : (
+        <button
+          className="btn-success px-3 py-2 text-sm"
+          disabled={busyChildId === c.id}
+          onClick={() => setStatus(c.id, "out")}
+        >
+          Check Out
+        </button>
+      )}
+    </div>
+  );
+}
+
 function CheckInRosterInner() {
   const params = useParams<{ eventId: string }>();
   const searchParams = useSearchParams();
@@ -87,6 +187,35 @@ function CheckInRosterInner() {
       (c) => c.childName.toLowerCase().includes(q) || c.parentName.toLowerCase().includes(q)
     );
   }, [modeFiltered, search]);
+
+  // Grouped by route/van (with the driver's call button once per group), since that's
+  // how check-in actually happens on the ground - a group at a time as each van arrives.
+  // Kids not on a route (direct drop-off) fall into their own group at the end.
+  const { routeGroups, unassigned } = useMemo(() => {
+    const groups = new Map<string, RouteGroup>();
+    const unassigned: RosterChild[] = [];
+    for (const c of visibleChildren) {
+      if (!c.vanName) {
+        unassigned.push(c);
+        continue;
+      }
+      const key = c.vanName;
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          vanName: c.vanName,
+          driverName: c.driverName,
+          driverPhone: c.driverPhone,
+          children: [],
+        });
+      }
+      groups.get(key)!.children.push(c);
+    }
+    return {
+      routeGroups: Array.from(groups.values()).sort((a, b) => (a.vanName ?? "").localeCompare(b.vanName ?? "")),
+      unassigned,
+    };
+  }, [visibleChildren]);
 
   if (error) {
     return (
@@ -150,104 +279,43 @@ function CheckInRosterInner() {
         ) : visibleChildren.length === 0 ? (
           <p className="text-slate-400 text-center mt-4">No matching children found.</p>
         ) : (
-          <div className="card divide-y divide-slate-100">
-            {visibleChildren.map((c) => (
-              <div key={c.id} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold">{c.childName}</p>
-                  <p className="text-slate-500 text-sm">
-                    <span>Parent: {c.parentName}</span>
-                    {c.parentPhone && (
-                      <>
-                        {" "}
-                        <a href={telHref(c.parentPhone)} className="text-brand-600 font-medium whitespace-nowrap">
-                          📞&nbsp;{c.parentPhone}
-                        </a>
-                      </>
-                    )}
+          <div className="space-y-4">
+            {routeGroups.map((g) => (
+              <div key={g.key} className="card p-0 overflow-hidden">
+                <div className="bg-brand-50 px-3.5 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                  <p className="font-semibold text-brand-800">
+                    {g.vanName}
+                    {g.driverName && ` (${g.driverName})`}
                   </p>
-                  {c.vanName && (
-                    <p className="text-slate-500 text-sm">
-                      <span>
-                        Van: {c.vanName}
-                        {c.driverName && ` (${c.driverName})`}
-                      </span>
-                      {c.driverPhone && (
-                        <>
-                          {" "}
-                          <a href={telHref(c.driverPhone)} className="text-brand-600 font-medium whitespace-nowrap">
-                            📞&nbsp;{c.driverPhone}
-                          </a>
-                        </>
-                      )}
-                    </p>
-                  )}
-                  {c.medicalNotes && <p className="text-red-600 text-sm">⚠ {c.medicalNotes}</p>}
-                </div>
-
-                {mode === "checkin" ? (
-                  c.status === "CHECKED_IN" || c.status === "CHECKED_OUT" ? (
-                    <div className="text-right shrink-0">
-                      <p className="text-emerald-600 font-semibold text-sm">✓ Checked In</p>
-                      <button
-                        className="text-xs text-brand-600 underline"
-                        disabled={busyChildId === c.id}
-                        onClick={() => setStatus(c.id, "undo")}
-                      >
-                        Undo
-                      </button>
-                    </div>
-                  ) : c.status === "SKIPPED" ? (
-                    <div className="text-right shrink-0">
-                      <p className="text-slate-400 text-sm">Not coming</p>
-                      <button
-                        className="text-xs text-brand-600 underline"
-                        disabled={busyChildId === c.id}
-                        onClick={() => setStatus(c.id, "undo")}
-                      >
-                        Undo
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <button
-                        className="btn-success px-3 py-2 text-sm"
-                        disabled={busyChildId === c.id}
-                        onClick={() => setStatus(c.id, "in")}
-                      >
-                        Check In
-                      </button>
-                      <button
-                        className="btn-warning px-3 py-2 text-sm"
-                        disabled={busyChildId === c.id}
-                        onClick={() => setStatus(c.id, "skip")}
-                      >
-                        😢 Not Coming Today
-                      </button>
-                    </div>
-                  )
-                ) : c.status === "CHECKED_OUT" ? (
-                  <div className="text-right shrink-0">
-                    <p className="text-emerald-600 font-semibold text-sm">✓ Checked Out</p>
-                    <button
-                      className="text-xs text-brand-600 underline"
-                      disabled={busyChildId === c.id}
-                      onClick={() => setStatus(c.id, "in")}
+                  {g.driverPhone && (
+                    <a
+                      href={telHref(g.driverPhone)}
+                      className="btn-secondary px-2 py-1 text-xs whitespace-nowrap"
                     >
-                      Undo
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="btn-success px-3 py-2 text-sm"
-                    disabled={busyChildId === c.id}
-                    onClick={() => setStatus(c.id, "out")}
-                  >
-                    Check Out
-                  </button>
-                )}
+                      📞 Call Driver
+                    </a>
+                  )}
+                </div>
+                <div className="divide-y divide-slate-100 px-3.5">
+                  {g.children.map((c) => (
+                    <ChildRow key={c.id} c={c} mode={mode} busyChildId={busyChildId} setStatus={setStatus} />
+                  ))}
+                </div>
               </div>
             ))}
+
+            {unassigned.length > 0 && (
+              <div className="card p-0 overflow-hidden">
+                <div className="bg-slate-100 px-3.5 py-2.5">
+                  <p className="font-semibold text-slate-700">No Route Assigned</p>
+                </div>
+                <div className="divide-y divide-slate-100 px-3.5">
+                  {unassigned.map((c) => (
+                    <ChildRow key={c.id} c={c} mode={mode} busyChildId={busyChildId} setStatus={setStatus} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
