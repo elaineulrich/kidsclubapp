@@ -10,7 +10,7 @@ type ImportResult = {
   warnings: string[];
 };
 
-export default function ImportExportPage() {
+export default function ImportExportWidget() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
@@ -39,11 +39,10 @@ export default function ImportExportPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-slate-900">Import / Export</h1>
+    <div className="card space-y-3">
+      <h2 className="font-semibold text-lg">Import / Export Roster</h2>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold text-lg">Export families &amp; children</h2>
+      <div className="space-y-2">
         <p className="text-slate-500 text-sm">
           Download all current families and children as an Excel spreadsheet.
         </p>
@@ -52,8 +51,7 @@ export default function ImportExportPage() {
         </a>
       </div>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold text-lg">Import from spreadsheet</h2>
+      <div className="border-t border-slate-100 pt-3 space-y-2">
         <p className="text-slate-500 text-sm">
           Upload a roster spreadsheet (the exported format above, or a Haven Kids Club
           &quot;Profile Metrics&quot; report). Rows are grouped by address into families. Existing

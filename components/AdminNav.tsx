@@ -10,12 +10,10 @@ const links = [
   { href: "/admin/families", label: "Families" },
   { href: "/admin/children", label: "Children" },
   { href: "/admin/events", label: "Events" },
-  { href: "/checkin", label: "Check-In" },
   { href: "/admin/drivers", label: "Drivers" },
   { href: "/admin/vans", label: "Vans" },
   { href: "/admin/routes", label: "Routes" },
   { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/import-export", label: "Import/Export" },
   { href: "/admin/users", label: "Staff Accounts" },
   { href: "/admin/settings", label: "Settings" },
 ];
