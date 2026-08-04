@@ -172,6 +172,41 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
   }
 }
 
+export async function sendRegistrationConfirmationEmail(data: RegistrationSubmission): Promise<SendInviteEmailResult> {
+  if (!resend) {
+    return { sent: false, error: "Email isn't configured (missing RESEND_API_KEY)" };
+  }
+
+  const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: data.parentEmail,
+      replyTo: CONTACT_EMAIL,
+      subject: "We got your Haven Kids Club registration!",
+      html: `
+        <p>Hi ${data.parentName},</p>
+        <p>Thanks for registering <strong>${data.childName}</strong> for Haven Kids Club! We've received your
+        application and will be in touch soon.</p>
+        <p>Here's what we received:</p>
+        <ul>
+          <li><strong>Child's Name:</strong> ${data.childName}</li>
+          <li><strong>Child's Age:</strong> ${data.childAge || "Not provided"}</li>
+          <li><strong>Transportation Needs:</strong> ${data.transportationNeeds}</li>
+        </ul>
+        <p>If anything above needs to be corrected, or you have questions in the meantime, just reply to this
+        email or call us at (254) 221-6793.</p>
+        <p>We can't wait to see ${data.childName} at Kids Club!</p>
+      `,
+    });
+    if (error) return { sent: false, error: error.message };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
 export type ContactSubmission = {
   name: string;
   email: string;
@@ -198,6 +233,34 @@ export async function sendContactEmail(data: ContactSubmission): Promise<SendInv
         <p><strong>Email:</strong> ${data.email}</p>
         <p><strong>Where did you hear about us?</strong> ${data.hearAboutUs || "Not provided"}</p>
         ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ""}
+      `,
+    });
+    if (error) return { sent: false, error: error.message };
+    return { sent: true };
+  } catch (e) {
+    return { sent: false, error: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
+export async function sendContactConfirmationEmail(data: ContactSubmission): Promise<SendInviteEmailResult> {
+  if (!resend) {
+    return { sent: false, error: "Email isn't configured (missing RESEND_API_KEY)" };
+  }
+
+  const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: data.email,
+      replyTo: CONTACT_EMAIL,
+      subject: "We got your message - Haven Kids Club",
+      html: `
+        <p>Hi ${data.name || "there"},</p>
+        <p>Thanks for reaching out to Haven Kids Club! We've received your message and will get back to
+        you soon.</p>
+        ${data.message ? `<p><strong>Your message:</strong> ${data.message}</p>` : ""}
+        <p>If you need to reach us sooner, just reply to this email or call us at (254) 221-6793.</p>
       `,
     });
     if (error) return { sent: false, error: error.message };
