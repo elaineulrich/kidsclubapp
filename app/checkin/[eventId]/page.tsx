@@ -27,7 +27,7 @@ type RosterChild = {
 type VanOption = { id: string; vanName: string; driver: { name: string } | null };
 
 type RosterData = {
-  event: { id: string; eventName: string; eventDate: string };
+  event: { id: string; eventName: string; eventDate: string; timing: "current" | "upcoming" | "past" };
   children: RosterChild[];
 };
 
@@ -35,9 +35,19 @@ type Mode = "checkin" | "checkout";
 type Action = "in" | "out" | "skip" | "undo";
 
 const UNASSIGNED_KEY = "__unassigned__";
+const PAST_EDIT_WARNING =
+  "By updating this route it will affect reporting as well, please use caution before updating past routes.";
 
 function telHref(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
+// How many kids in this group have finished the current mode's action - checked in
+// (or already out) for Check-In, checked out for Check-Out - shown as "(done/total)"
+// on each route tab so a glance shows progress per van, not just headcount.
+function doneCount(children: RosterChild[], mode: Mode) {
+  if (mode === "checkin") return children.filter((c) => c.status === "CHECKED_IN" || c.status === "CHECKED_OUT").length;
+  return children.filter((c) => c.status === "CHECKED_OUT").length;
 }
 
 type RouteGroup = {
@@ -57,6 +67,7 @@ function ChildRow({
   vans,
   changingVanChildId,
   changeVan,
+  locked,
 }: {
   c: RosterChild;
   mode: Mode;
@@ -66,6 +77,7 @@ function ChildRow({
   vans: VanOption[];
   changingVanChildId: string | null;
   changeVan: (childId: string, vanId: string | null) => void;
+  locked: boolean;
 }) {
   return (
     <div className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
@@ -103,25 +115,35 @@ function ChildRow({
         c.status === "CHECKED_IN" || c.status === "CHECKED_OUT" ? (
           <div className="text-right shrink-0">
             <p className="text-emerald-600 font-semibold text-sm">✓ Checked In</p>
-            <button
-              className="text-xs text-brand-600 underline"
-              disabled={busyChildId === c.id}
-              onClick={() => setStatus(c.id, "undo")}
-            >
-              Undo
-            </button>
+            {locked ? (
+              <p className="text-xs text-slate-400">Ask an admin</p>
+            ) : (
+              <button
+                className="text-xs text-brand-600 underline"
+                disabled={busyChildId === c.id}
+                onClick={() => setStatus(c.id, "undo")}
+              >
+                Undo
+              </button>
+            )}
           </div>
         ) : c.status === "SKIPPED" ? (
           <div className="text-right shrink-0">
             <p className="text-slate-400 text-sm">Not coming</p>
-            <button
-              className="text-xs text-brand-600 underline"
-              disabled={busyChildId === c.id}
-              onClick={() => setStatus(c.id, "undo")}
-            >
-              Undo
-            </button>
+            {locked ? (
+              <p className="text-xs text-slate-400">Ask an admin</p>
+            ) : (
+              <button
+                className="text-xs text-brand-600 underline"
+                disabled={busyChildId === c.id}
+                onClick={() => setStatus(c.id, "undo")}
+              >
+                Undo
+              </button>
+            )}
           </div>
+        ) : locked ? (
+          <span className="text-slate-400 text-sm shrink-0">Not checked in</span>
         ) : (
           <div className="flex flex-col gap-1 shrink-0">
             <button
@@ -143,14 +165,20 @@ function ChildRow({
       ) : c.status === "CHECKED_OUT" ? (
         <div className="text-right shrink-0">
           <p className="text-emerald-600 font-semibold text-sm">✓ Checked Out</p>
-          <button
-            className="text-xs text-brand-600 underline"
-            disabled={busyChildId === c.id}
-            onClick={() => setStatus(c.id, "in")}
-          >
-            Undo
-          </button>
+          {locked ? (
+            <p className="text-xs text-slate-400">Ask an admin</p>
+          ) : (
+            <button
+              className="text-xs text-brand-600 underline"
+              disabled={busyChildId === c.id}
+              onClick={() => setStatus(c.id, "in")}
+            >
+              Undo
+            </button>
+          )}
         </div>
+      ) : locked ? (
+        <span className="text-slate-400 text-sm shrink-0">Not checked out</span>
       ) : (
         <button
           className="btn-success px-3 py-2 text-sm"
@@ -203,7 +231,10 @@ function CheckInRosterInner() {
     fetch("/api/vans").then((r) => (r.ok ? r.json() : [])).then(setVans);
   }, [isAdmin]);
 
+  const isPast = data?.event.timing === "past";
+
   async function setStatus(childId: string, action: Action) {
+    if (isPast && !window.confirm(PAST_EDIT_WARNING)) return;
     setBusyChildId(childId);
     await fetch(`/api/checkin/${params.eventId}`, {
       method: "PATCH",
@@ -215,6 +246,7 @@ function CheckInRosterInner() {
   }
 
   async function changeVan(childId: string, vanId: string | null) {
+    if (isPast && !window.confirm(PAST_EDIT_WARNING)) return;
     setChangingVanChildId(childId);
     await fetch(`/api/checkin/${params.eventId}/van`, {
       method: "PATCH",
@@ -339,6 +371,14 @@ function CheckInRosterInner() {
           <SignOutButton />
         </div>
 
+        {isPast && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            {isAdmin
+              ? "This event has already happened. Changes here affect reporting - use caution."
+              : "This event has already happened. Ask an admin to make changes."}
+          </p>
+        )}
+
         {stats && (
           <div className="card py-2.5 px-3.5 flex items-center justify-around text-center gap-2 flex-wrap">
             <div>
@@ -415,6 +455,7 @@ function CheckInRosterInner() {
                       vans={vans}
                       changingVanChildId={changingVanChildId}
                       changeVan={changeVan}
+                      locked={isPast && !isAdmin}
                     />
                   ))}
                 </div>
@@ -435,7 +476,7 @@ function CheckInRosterInner() {
                       : "bg-white text-slate-600 border-slate-200")
                   }
                 >
-                  {g.vanName} ({g.children.length})
+                  {g.vanName} <span className="text-xs font-normal opacity-70">({doneCount(g.children, mode)}/{g.children.length})</span>
                 </button>
               ))}
             </div>
@@ -465,6 +506,7 @@ function CheckInRosterInner() {
                       vans={vans}
                       changingVanChildId={changingVanChildId}
                       changeVan={changeVan}
+                      locked={isPast && !isAdmin}
                     />
                   ))}
                 </div>
