@@ -7,14 +7,14 @@ import SignOutButton from "./SignOutButton";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/events", label: "Events" },
   { href: "/admin/families", label: "Families" },
   { href: "/admin/children", label: "Children" },
-  { href: "/admin/events", label: "Events" },
-  { href: "/admin/drivers", label: "Drivers" },
-  { href: "/admin/vans", label: "Vans" },
   { href: "/admin/routes", label: "Routes" },
-  { href: "/admin/reports", label: "Reports" },
+  { href: "/admin/vans", label: "Vans" },
+  { href: "/admin/drivers", label: "Drivers" },
   { href: "/admin/users", label: "Staff Accounts" },
+  { href: "/admin/reports", label: "Reports" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
