@@ -5,6 +5,11 @@ import Providers from "@/components/Providers";
 export const metadata: Metadata = {
   title: "Haven Kids Club",
   description: "Haven Kids Club check-in, transportation, and family management",
+  appleWebApp: {
+    title: "Haven Kids Club",
+    capable: true,
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
