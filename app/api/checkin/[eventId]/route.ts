@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
 import { applyCheckAction, routeStatusToCheckStatus, attendanceStatusToCheckStatus, CheckAction } from "@/lib/attendanceSync";
+import { classifyDay, getOrgTimezone } from "@/lib/orgTime";
 
 // Front-desk check-in roster: every active child (not just ones on a van route -
 // plenty are dropped off directly), each with the same effective status a driver
@@ -13,6 +14,8 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
 
   const event = await prisma.event.findUnique({ where: { id: params.eventId } });
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const timing = classifyDay(event.eventDate, await getOrgTimezone());
 
   const children = await prisma.child.findMany({
     where: { activeStatus: true },
@@ -48,9 +51,13 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
     };
   });
 
-  return NextResponse.json({ event, children: roster });
+  return NextResponse.json({ event: { ...event, timing }, children: roster });
 }
 
+// Past events are still open for admins to correct (e.g. a volunteer forgot to check
+// someone out) but volunteers can't touch them - those attendance records already
+// feed reports, so only an admin who's seen the "this affects reporting" warning
+// client-side should be able to change them.
 export async function PATCH(req: NextRequest, { params }: { params: { eventId: string } }) {
   const { session, error } = await requireRole(["ADMIN", "VOLUNTEER"]);
   if (error) return error;
@@ -60,6 +67,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { eventId: s
 
   if (!childId || !action) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const event = await prisma.event.findUnique({ where: { id: params.eventId } });
+  if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const timing = classifyDay(event.eventDate, await getOrgTimezone());
+  if (timing === "past" && session!.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Only admins can edit a past event's check-in records" }, { status: 403 });
   }
 
   await applyCheckAction(params.eventId, childId, action, session!.user.id);
