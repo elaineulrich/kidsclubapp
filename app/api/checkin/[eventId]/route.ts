@@ -38,6 +38,7 @@ export async function GET(_req: NextRequest, { params }: { params: { eventId: st
       parentPhone: child.family.phone,
       age: child.age,
       medicalNotes: child.medicalNotes,
+      vanId: assignment?.vanId ?? null,
       vanName: assignment?.van?.vanName ?? null,
       driverName: assignment?.driver?.name ?? null,
       driverPhone: assignment?.driver?.phone ?? null,
