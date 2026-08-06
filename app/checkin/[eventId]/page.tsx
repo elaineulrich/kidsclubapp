@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 
@@ -14,6 +15,7 @@ type RosterChild = {
   parentPhone: string;
   age: number | null;
   medicalNotes: string | null;
+  vanId: string | null;
   vanName: string | null;
   driverName: string | null;
   driverPhone: string | null;
@@ -21,6 +23,8 @@ type RosterChild = {
   checkInTime: string | null;
   checkOutTime: string | null;
 };
+
+type VanOption = { id: string; vanName: string; driver: { name: string } | null };
 
 type RosterData = {
   event: { id: string; eventName: string; eventDate: string };
@@ -49,11 +53,19 @@ function ChildRow({
   mode,
   busyChildId,
   setStatus,
+  isAdmin,
+  vans,
+  changingVanChildId,
+  changeVan,
 }: {
   c: RosterChild;
   mode: Mode;
   busyChildId: string | null;
   setStatus: (childId: string, action: Action) => void;
+  isAdmin: boolean;
+  vans: VanOption[];
+  changingVanChildId: string | null;
+  changeVan: (childId: string, vanId: string | null) => void;
 }) {
   return (
     <div className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
@@ -68,6 +80,22 @@ function ChildRow({
           >
             📞 {c.parentPhone}
           </a>
+        )}
+        {isAdmin && mode === "checkout" && (
+          <select
+            className="input text-xs py-1 px-1.5 mt-1.5 w-auto"
+            value={c.vanId ?? ""}
+            disabled={changingVanChildId === c.id}
+            onChange={(e) => changeVan(c.id, e.target.value || null)}
+          >
+            <option value="">No Route</option>
+            {vans.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.vanName}
+                {v.driver ? ` (${v.driver.name})` : ""}
+              </option>
+            ))}
+          </select>
         )}
       </div>
 
@@ -140,12 +168,16 @@ function CheckInRosterInner() {
   const params = useParams<{ eventId: string }>();
   const searchParams = useSearchParams();
   const mode: Mode = searchParams.get("mode") === "checkout" ? "checkout" : "checkin";
+  const { data: session } = useSession();
+  const isAdmin = session?.user.role === "ADMIN";
 
   const [data, setData] = useState<RosterData | null>(null);
   const [error, setError] = useState("");
   const [busyChildId, setBusyChildId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
+  const [vans, setVans] = useState<VanOption[]>([]);
+  const [changingVanChildId, setChangingVanChildId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/checkin/${params.eventId}`);
@@ -165,6 +197,12 @@ function CheckInRosterInner() {
     return () => clearInterval(interval);
   }, [load]);
 
+  // Only admins can move a child's route, so only they need the van list at all.
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/vans").then((r) => (r.ok ? r.json() : [])).then(setVans);
+  }, [isAdmin]);
+
   async function setStatus(childId: string, action: Action) {
     setBusyChildId(childId);
     await fetch(`/api/checkin/${params.eventId}`, {
@@ -173,6 +211,17 @@ function CheckInRosterInner() {
       body: JSON.stringify({ childId, action }),
     });
     setBusyChildId(null);
+    load();
+  }
+
+  async function changeVan(childId: string, vanId: string | null) {
+    setChangingVanChildId(childId);
+    await fetch(`/api/checkin/${params.eventId}/van`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ childId, vanId }),
+    });
+    setChangingVanChildId(null);
     load();
   }
 
@@ -237,6 +286,26 @@ function CheckInRosterInner() {
   const isSearching = search.trim().length > 0;
   const selectedGroup = routeGroups.find((g) => g.key === selectedRouteKey) ?? null;
 
+  // Headline counts for the committee at a glance - how many have arrived so far
+  // today versus how many are still expected (everyone active, minus anyone
+  // already marked as not coming).
+  const stats = useMemo(() => {
+    if (!data) return null;
+    let checkedIn = 0;
+    let checkedOut = 0;
+    let skipped = 0;
+    for (const c of data.children) {
+      if (c.status === "CHECKED_IN") checkedIn++;
+      else if (c.status === "CHECKED_OUT") checkedOut++;
+      else if (c.status === "SKIPPED") skipped++;
+    }
+    return {
+      arrived: checkedIn + checkedOut,
+      checkedOut,
+      expectedToday: data.children.length - skipped,
+    };
+  }, [data]);
+
   if (error) {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
@@ -269,6 +338,25 @@ function CheckInRosterInner() {
           </div>
           <SignOutButton />
         </div>
+
+        {stats && (
+          <div className="card py-2.5 px-3.5 flex items-center justify-around text-center gap-2 flex-wrap">
+            <div>
+              <p className="text-lg font-bold text-emerald-600">{stats.arrived}</p>
+              <p className="text-xs text-slate-500">Checked In</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-brand-600">{stats.expectedToday}</p>
+              <p className="text-xs text-slate-500">Expected Today</p>
+            </div>
+            {stats.checkedOut > 0 && (
+              <div>
+                <p className="text-lg font-bold text-slate-500">{stats.checkedOut}</p>
+                <p className="text-xs text-slate-500">Checked Out</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <Link
@@ -317,7 +405,17 @@ function CheckInRosterInner() {
                 </div>
                 <div className="divide-y divide-slate-100 px-3.5">
                   {g.children.map((c) => (
-                    <ChildRow key={c.id} c={c} mode={mode} busyChildId={busyChildId} setStatus={setStatus} />
+                    <ChildRow
+                      key={c.id}
+                      c={c}
+                      mode={mode}
+                      busyChildId={busyChildId}
+                      setStatus={setStatus}
+                      isAdmin={isAdmin}
+                      vans={vans}
+                      changingVanChildId={changingVanChildId}
+                      changeVan={changeVan}
+                    />
                   ))}
                 </div>
               </div>
@@ -357,7 +455,17 @@ function CheckInRosterInner() {
                 </div>
                 <div className="divide-y divide-slate-100 px-3.5">
                   {selectedGroup.children.map((c) => (
-                    <ChildRow key={c.id} c={c} mode={mode} busyChildId={busyChildId} setStatus={setStatus} />
+                    <ChildRow
+                      key={c.id}
+                      c={c}
+                      mode={mode}
+                      busyChildId={busyChildId}
+                      setStatus={setStatus}
+                      isAdmin={isAdmin}
+                      vans={vans}
+                      changingVanChildId={changingVanChildId}
+                      changeVan={changeVan}
+                    />
                   ))}
                 </div>
               </div>
