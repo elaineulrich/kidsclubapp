@@ -8,9 +8,9 @@ import SignOutButton from "./SignOutButton";
 const links = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/events", label: "Events" },
+  { href: "/admin/routes", label: "Routes" },
   { href: "/admin/families", label: "Families" },
   { href: "/admin/children", label: "Children" },
-  { href: "/admin/routes", label: "Routes" },
   { href: "/admin/vans", label: "Vans" },
   { href: "/admin/drivers", label: "Drivers" },
   { href: "/admin/users", label: "Staff Accounts" },
