@@ -215,11 +215,15 @@ function RoutesPageInner() {
   }
 
   const unassignedRemaining = unassigned.filter((u) => !(u.childId in assignments));
+  const selectedEvent = events.find((e) => e.id === eventId);
+  const heading = selectedEvent
+    ? `${new Date(selectedEvent.eventDate).toLocaleDateString(undefined, { month: "long", day: "numeric" })} Routes`
+    : "Pickup Routes";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-slate-900">Today&apos;s Pickup Routes</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{heading}</h1>
         <select
           className="input w-auto"
           value={eventId ?? ""}
