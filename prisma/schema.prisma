@@ -162,6 +162,9 @@ model Driver {
   email        String?
   loginCode    String  @unique
   activeStatus Boolean @default(true)
+  /// Consent to receive SMS text messages (route links, etc.) at `phone`. Defaults
+  /// to false - opted in explicitly, never assumed.
+  smsOptIn     Boolean @default(false)
 
   vans             Van[]
   routeAssignments RouteAssignment[]

@@ -31,6 +31,8 @@ function RoutesPageInner() {
   const [editMode, setEditMode] = useState(true);
   const [sortingVanId, setSortingVanId] = useState<string | null>(null);
   const [sortMessage, setSortMessage] = useState<string | null>(null);
+  const [texting, setTexting] = useState(false);
+  const [textResult, setTextResult] = useState<{ sentCount: number; skippedCount: number; failedCount: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
@@ -48,6 +50,7 @@ function RoutesPageInner() {
     const data = await res.json();
     setVans(data.vans);
     setUnassigned(data.unassigned);
+    setTextResult(null);
 
     const initial: Record<string, Stop> = {};
     const originalIds = new Set<string>();
@@ -182,6 +185,20 @@ function RoutesPageInner() {
 
   function cancelEdit() {
     load();
+  }
+
+  async function textDrivers() {
+    if (!eventId) return;
+    if (!confirm("Text every opted-in driver a link to their route for this event?")) return;
+    setTexting(true);
+    const res = await fetch(`/api/events/${eventId}/routes/text-drivers`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setTexting(false);
+    if (res.ok && data) {
+      setTextResult(data);
+    } else {
+      alert(data?.error || "Couldn't text drivers.");
+    }
   }
 
   const unassignedRemaining = unassigned.filter((u) => !(u.childId in assignments));
@@ -325,6 +342,27 @@ function RoutesPageInner() {
           {saved && <span className="text-emerald-600 font-medium">Routes saved ✓</span>}
         </div>
       )}
+
+      <div className="card space-y-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="font-semibold">Text Drivers</h2>
+            <p className="text-sm text-slate-500">
+              Sends every opted-in driver with a stop on this event a link to their route.
+            </p>
+          </div>
+          <button className="btn-gradient" onClick={textDrivers} disabled={texting}>
+            {texting ? "Sending..." : "📱 Text Drivers Their Routes"}
+          </button>
+        </div>
+        {textResult && (
+          <p className="text-sm text-slate-500 border-t border-slate-100 pt-2">
+            Sent to {textResult.sentCount} driver{textResult.sentCount === 1 ? "" : "s"}.{" "}
+            {textResult.skippedCount} not opted in.
+            {textResult.failedCount > 0 && ` ${textResult.failedCount} failed to send.`}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
