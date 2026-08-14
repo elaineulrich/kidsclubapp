@@ -10,6 +10,17 @@ const twilioClient =
 
 export type SendSmsResult = { sent: boolean; error?: string };
 
+// Family/driver phone numbers are stored as free-form text (e.g. "254-320-7123"),
+// but Twilio requires E.164 (e.g. "+12543207123"). Assumes US numbers, matching
+// the rest of this app (church address, timezone default, etc. are all US-only).
+export function toE164(phone: string): string | null {
+  if (phone.startsWith("+")) return phone;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}
+
 // Generic text sender - no specific triggers wired up to this yet (route-ready
 // notifications, check-in confirmations, etc. are still to be decided). `to`
 // should be a phone number in E.164 format (e.g. "+12345550123").

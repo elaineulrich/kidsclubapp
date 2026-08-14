@@ -21,7 +21,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json();
   const {
     parentName, phone, email, address, addressLine2, city, state, zip,
-    emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+    emergencyContactName, emergencyContactPhone, emergencyContactRelationship, smsOptIn,
   } = body;
 
   const existing = await prisma.family.findUnique({ where: { id: params.id }, select: { address: true } });
@@ -32,6 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     data: {
       parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+      smsOptIn: smsOptIn === true,
       // Stale coordinates are worse than none - force a re-geocode next time this
       // family's route is auto-sorted.
       ...(addressChanged ? { lat: null, lng: null } : {}),
