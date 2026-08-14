@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     parentName, phone, email, address, addressLine2, city, state, zip,
-    emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+    emergencyContactName, emergencyContactPhone, emergencyContactRelationship, smsOptIn,
   } = body;
 
   if (!parentName || !phone || !address || !city || !state || !zip) {
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     data: {
       parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
+      smsOptIn: smsOptIn === true,
     },
   });
 

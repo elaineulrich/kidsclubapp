@@ -29,12 +29,16 @@ const emptyForm = {
   recurrence: "NONE" as Recurrence,
 };
 
+type RemindResult = { sentCount: number; skippedCount: number; failedCount: number };
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [remindingId, setRemindingId] = useState<string | null>(null);
+  const [remindResults, setRemindResults] = useState<Record<string, RemindResult>>({});
 
   const load = useCallback(async () => {
     const res = await fetch("/api/events");
@@ -78,6 +82,19 @@ export default function EventsPage() {
     if (!confirm("Delete this event and all its attendance/route data?")) return;
     await fetch(`/api/events/${id}`, { method: "DELETE" });
     load();
+  }
+
+  async function sendReminder(id: string) {
+    if (!confirm("Text an event reminder to every opted-in family? This can't be undone.")) return;
+    setRemindingId(id);
+    const res = await fetch(`/api/events/${id}/remind`, { method: "POST" });
+    const data = await res.json().catch(() => null);
+    setRemindingId(null);
+    if (res.ok && data) {
+      setRemindResults((prev) => ({ ...prev, [id]: data }));
+    } else {
+      alert(data?.error || "Couldn't send reminders.");
+    }
   }
 
   return (
@@ -148,32 +165,48 @@ export default function EventsPage() {
 
       <div className="space-y-3">
         {events.map((e) => (
-          <div key={e.id} className="card flex justify-between items-center flex-wrap gap-2">
-            <div>
-              <p className="font-semibold text-lg">
-                {e.eventName}{" "}
-                {e.recurrence !== "NONE" && (
-                  <span className="text-xs font-medium text-brand-600 bg-brand-50 rounded px-2 py-0.5 align-middle">
-                    {RECURRENCE_LABELS[e.recurrence]}
-                  </span>
-                )}
-              </p>
-              <p className="text-slate-500 text-sm">
-                {new Date(e.eventDate).toLocaleDateString(undefined, {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}{" "}
-                &middot; {e.startTime}&ndash;{e.endTime}
-              </p>
+          <div key={e.id} className="card flex flex-col gap-2">
+            <div className="flex justify-between items-center flex-wrap gap-2">
+              <div>
+                <p className="font-semibold text-lg">
+                  {e.eventName}{" "}
+                  {e.recurrence !== "NONE" && (
+                    <span className="text-xs font-medium text-brand-600 bg-brand-50 rounded px-2 py-0.5 align-middle">
+                      {RECURRENCE_LABELS[e.recurrence]}
+                    </span>
+                  )}
+                </p>
+                <p className="text-slate-500 text-sm">
+                  {new Date(e.eventDate).toLocaleDateString(undefined, {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}{" "}
+                  &middot; {e.startTime}&ndash;{e.endTime}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Link href={`/checkin/${e.id}`} className="btn-secondary">Check-In</Link>
+                <Link href={`/admin/routes?eventId=${e.id}`} className="btn-secondary">Routes</Link>
+                <button
+                  className="btn-secondary"
+                  onClick={() => sendReminder(e.id)}
+                  disabled={remindingId === e.id}
+                >
+                  {remindingId === e.id ? "Sending..." : "📱 Text Reminder"}
+                </button>
+                <button className="btn-secondary" onClick={() => startEdit(e)}>Edit</button>
+                <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Link href={`/checkin/${e.id}`} className="btn-secondary">Check-In</Link>
-              <Link href={`/admin/routes?eventId=${e.id}`} className="btn-secondary">Routes</Link>
-              <button className="btn-secondary" onClick={() => startEdit(e)}>Edit</button>
-              <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>
-            </div>
+            {remindResults[e.id] && (
+              <p className="text-sm text-slate-500 border-t border-slate-100 pt-2">
+                Sent to {remindResults[e.id].sentCount} famil{remindResults[e.id].sentCount === 1 ? "y" : "ies"}.{" "}
+                {remindResults[e.id].skippedCount} not opted in.
+                {remindResults[e.id].failedCount > 0 && ` ${remindResults[e.id].failedCount} failed to send.`}
+              </p>
+            )}
           </div>
         ))}
         {events.length === 0 && <p className="text-slate-500">No events yet.</p>}
