@@ -51,7 +51,11 @@ export default function PublicFooter() {
       <div className="border-t border-brand-800">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row gap-2 sm:gap-4 justify-between text-xs text-brand-300">
           <p>Copyright &copy; {year} Haven Kids Club - All Rights Reserved</p>
-          <Link href="/credits" className="hover:text-white">Photo Credits</Link>
+          <div className="flex gap-4">
+            <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-white">Terms of Service</Link>
+            <Link href="/credits" className="hover:text-white">Photo Credits</Link>
+          </div>
         </div>
       </div>
     </footer>
