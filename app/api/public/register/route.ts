@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     parentPhone,
     address,
     transportationNeeds,
+    smsOptIn,
   } = body;
 
   if (!childName || !allergyInfo || !parentName || !parentEmail || !parentPhone || !address || !transportationNeeds) {
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
     parentPhone,
     address,
     transportationNeeds,
+    smsOptIn: smsOptIn === true,
   };
 
   // The notification to staff is the business-critical send - its result drives the
