@@ -17,6 +17,7 @@ type Family = {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   emergencyContactRelationship: string | null;
+  smsOptIn: boolean;
   children: { id: string; childName: string }[];
 };
 
@@ -32,6 +33,7 @@ const emptyForm = {
   emergencyContactName: "",
   emergencyContactPhone: "",
   emergencyContactRelationship: "",
+  smsOptIn: false,
 };
 
 export default function FamiliesPage() {
@@ -65,6 +67,7 @@ export default function FamiliesPage() {
       emergencyContactName: f.emergencyContactName ?? "",
       emergencyContactPhone: f.emergencyContactPhone ?? "",
       emergencyContactRelationship: f.emergencyContactRelationship ?? "",
+      smsOptIn: f.smsOptIn,
     });
     setShowForm(true);
   }
@@ -174,6 +177,19 @@ export default function FamiliesPage() {
             <input className="input" placeholder="e.g. Grandmother" value={form.emergencyContactRelationship}
               onChange={(e) => setForm({ ...form, emergencyContactRelationship: e.target.value })} />
           </div>
+          <div className="md:col-span-2 flex items-start gap-2.5">
+            <input
+              id="smsOptIn"
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0"
+              checked={form.smsOptIn}
+              onChange={(e) => setForm({ ...form, smsOptIn: e.target.checked })}
+            />
+            <label htmlFor="smsOptIn" className="text-sm text-slate-600">
+              Opted in to receive SMS text messages (event reminders, route notices, etc.).
+              Only check this if the family has given consent.
+            </label>
+          </div>
           <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Family"}
@@ -201,6 +217,13 @@ export default function FamiliesPage() {
                       .filter(Boolean).join(" · ")}
                   </p>
                 )}
+                <p className="text-sm mt-1">
+                  {f.smsOptIn ? (
+                    <span className="text-emerald-600">📱 SMS opted in</span>
+                  ) : (
+                    <span className="text-slate-400">SMS not opted in</span>
+                  )}
+                </p>
                 <p className="text-sm mt-2">
                   Children:{" "}
                   {f.children.length === 0
