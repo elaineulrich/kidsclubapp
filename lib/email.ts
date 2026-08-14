@@ -129,17 +129,27 @@ export async function sendDriverCodeEmail(
   }
 }
 
+export type RegistrationChild = { childName: string; childAge?: string; allergyInfo: string };
+
 export type RegistrationSubmission = {
-  childName: string;
-  childAge?: string;
-  allergyInfo: string;
+  children: RegistrationChild[];
   parentName: string;
   parentEmail: string;
   parentPhone: string;
   address: string;
+  city: string;
+  state: string;
+  zip: string;
   transportationNeeds: string;
   smsOptIn: boolean;
 };
+
+function childNamesList(children: RegistrationChild[]): string {
+  const names = children.map((c) => c.childName);
+  if (names.length === 1) return names[0];
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+}
 
 export async function sendRegistrationEmail(data: RegistrationSubmission): Promise<SendInviteEmailResult> {
   if (!resend) {
@@ -153,16 +163,22 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
       from,
       to: CONTACT_EMAIL,
       replyTo: data.parentEmail,
-      subject: `New Kids Club Registration: ${data.childName}`,
+      subject: `New Kids Club Registration: ${childNamesList(data.children)}`,
       html: `
         <h2>New Kids Club Registration</h2>
-        <p><strong>Child's Full Name:</strong> ${data.childName}</p>
-        <p><strong>Child's Age:</strong> ${data.childAge || "Not provided"}</p>
-        <p><strong>Child's Allergy Info:</strong> ${data.allergyInfo}</p>
+        ${data.children
+          .map(
+            (c) => `
+          <p><strong>Child's Full Name:</strong> ${c.childName}</p>
+          <p><strong>Child's Age:</strong> ${c.childAge || "Not provided"}</p>
+          <p><strong>Child's Allergy Info:</strong> ${c.allergyInfo}</p>
+        `
+          )
+          .join("<hr>")}
         <p><strong>Parent/Guardian's Name:</strong> ${data.parentName}</p>
         <p><strong>Parent/Guardian's Email:</strong> ${data.parentEmail}</p>
         <p><strong>Parent/Guardian's Phone:</strong> ${data.parentPhone}</p>
-        <p><strong>Street Address:</strong> ${data.address}</p>
+        <p><strong>Street Address:</strong> ${data.address}, ${data.city}, ${data.state} ${data.zip}</p>
         <p><strong>Transportation Needs:</strong> ${data.transportationNeeds}</p>
         <p><strong>SMS Opt-In:</strong> ${data.smsOptIn ? "Yes" : "No"}</p>
       `,
@@ -180,6 +196,7 @@ export async function sendRegistrationConfirmationEmail(data: RegistrationSubmis
   }
 
   const from = process.env.EMAIL_FROM || "Haven Kids Club <onboarding@resend.dev>";
+  const names = childNamesList(data.children);
 
   try {
     const { error } = await resend.emails.send({
@@ -189,17 +206,18 @@ export async function sendRegistrationConfirmationEmail(data: RegistrationSubmis
       subject: "We got your Haven Kids Club registration!",
       html: `
         <p>Hi ${data.parentName},</p>
-        <p>Thanks for registering <strong>${data.childName}</strong> for Haven Kids Club! We've received your
+        <p>Thanks for registering <strong>${names}</strong> for Haven Kids Club! We've received your
         application and will be in touch soon.</p>
         <p>Here's what we received:</p>
         <ul>
-          <li><strong>Child's Name:</strong> ${data.childName}</li>
-          <li><strong>Child's Age:</strong> ${data.childAge || "Not provided"}</li>
+          ${data.children
+            .map((c) => `<li><strong>${c.childName}</strong> - Age: ${c.childAge || "Not provided"}</li>`)
+            .join("")}
           <li><strong>Transportation Needs:</strong> ${data.transportationNeeds}</li>
         </ul>
         <p>If anything above needs to be corrected, or you have questions in the meantime, just reply to this
         email or call us at (254) 221-6793.</p>
-        <p>We can't wait to see ${data.childName} at Kids Club!</p>
+        <p>We can't wait to see ${names} at Kids Club!</p>
       `,
     });
     if (error) return { sent: false, error: error.message };
