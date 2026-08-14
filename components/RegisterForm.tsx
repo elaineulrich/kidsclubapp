@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 const initialState = {
   childName: "",
@@ -11,6 +12,7 @@ const initialState = {
   parentPhone: "",
   address: "",
   transportationNeeds: "",
+  smsOptIn: false,
 };
 
 export default function RegisterForm() {
@@ -18,7 +20,7 @@ export default function RegisterForm() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
 
-  function update<K extends keyof typeof initialState>(key: K, value: string) {
+  function update<K extends keyof typeof initialState>(key: K, value: (typeof initialState)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -161,6 +163,29 @@ export default function RegisterForm() {
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
+      </div>
+
+      <div className="flex items-start gap-2.5 pt-1">
+        <input
+          id="smsOptIn"
+          type="checkbox"
+          className="mt-1 h-4 w-4 shrink-0"
+          checked={form.smsOptIn}
+          onChange={(e) => update("smsOptIn", e.target.checked)}
+        />
+        <label htmlFor="smsOptIn" className="text-sm text-slate-600">
+          I&apos;d like to receive text message updates from Haven Kids Club about pickup routes,
+          event reminders, and program information. Message frequency varies. Message and data
+          rates may apply. Reply STOP to opt out or HELP for help at any time. See our{" "}
+          <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline">
+            Privacy Policy
+          </Link>{" "}
+          and{" "}
+          <Link href="/terms" target="_blank" className="text-brand-600 hover:underline">
+            Terms of Service
+          </Link>
+          . This is optional and not required to register.
+        </label>
       </div>
 
       {status === "error" && <p className="text-red-600 text-sm">{errorMessage}</p>}
