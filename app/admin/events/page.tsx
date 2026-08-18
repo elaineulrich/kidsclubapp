@@ -29,6 +29,12 @@ const emptyForm = {
   recurrence: "NONE" as Recurrence,
 };
 
+function isToday(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -147,13 +153,25 @@ export default function EventsPage() {
       </Modal>
 
       <div className="space-y-3">
-        {events.map((e) => (
-          <div key={e.id} className="card flex justify-between items-center flex-wrap gap-2">
+        {events.map((e) => {
+          const today = isToday(e.eventDate);
+          return (
+          <div
+            key={e.id}
+            className={`card flex justify-between items-center flex-wrap gap-2 ${
+              today ? "border-2 border-brand-500 bg-brand-50" : ""
+            }`}
+          >
             <div>
               <p className="font-semibold text-lg">
                 {e.eventName}{" "}
+                {today && (
+                  <span className="text-xs font-bold text-white bg-brand-600 rounded px-2 py-0.5 align-middle">
+                    TODAY
+                  </span>
+                )}{" "}
                 {e.recurrence !== "NONE" && (
-                  <span className="text-xs font-medium text-brand-600 bg-brand-50 rounded px-2 py-0.5 align-middle">
+                  <span className="text-xs font-medium text-brand-600 bg-white rounded px-2 py-0.5 align-middle">
                     {RECURRENCE_LABELS[e.recurrence]}
                   </span>
                 )}
@@ -175,7 +193,8 @@ export default function EventsPage() {
               <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {events.length === 0 && <p className="text-slate-500">No events yet.</p>}
       </div>
     </div>
