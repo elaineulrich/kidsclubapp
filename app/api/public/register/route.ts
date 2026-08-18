@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRegistrationEmail, sendRegistrationConfirmationEmail } from "@/lib/email";
 
-type ChildInput = { childName: string; childAge?: string; allergyInfo: string };
+type ChildInput = { childName: string; birthday?: string; childAge?: string; allergyInfo: string };
 
 function parseAge(input?: string): number | null {
   if (!input) return null;
@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     city,
     state,
     zip,
+    emergencyContactName,
+    emergencyContactPhone,
+    emergencyContactRelationship,
     transportationNeeds,
     smsOptIn,
   } = body as {
@@ -34,6 +37,9 @@ export async function POST(req: NextRequest) {
     city?: string;
     state?: string;
     zip?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
     transportationNeeds?: string;
     smsOptIn?: boolean;
   };
@@ -68,6 +74,9 @@ export async function POST(req: NextRequest) {
         city,
         state,
         zip,
+        emergencyContactName: emergencyContactName || null,
+        emergencyContactPhone: emergencyContactPhone || null,
+        emergencyContactRelationship: emergencyContactRelationship || null,
         smsOptIn: smsOptIn === true,
       },
     });
@@ -77,6 +86,7 @@ export async function POST(req: NextRequest) {
     data: validChildren.map((c) => ({
       familyId: family!.id,
       childName: c.childName.trim(),
+      birthday: c.birthday ? new Date(c.birthday) : null,
       age: parseAge(c.childAge),
       medicalNotes: c.allergyInfo.trim(),
       pickupRequired: transportationNeeds === "Yes",
@@ -92,6 +102,9 @@ export async function POST(req: NextRequest) {
     city,
     state,
     zip,
+    emergencyContactName,
+    emergencyContactPhone,
+    emergencyContactRelationship,
     transportationNeeds,
     smsOptIn: smsOptIn === true,
   };
