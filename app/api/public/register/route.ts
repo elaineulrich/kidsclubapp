@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRegistrationEmail, sendRegistrationConfirmationEmail } from "@/lib/email";
 
-type ChildInput = { childName: string; childAge?: string; allergyInfo: string };
+type ChildInput = { childName: string; childBirthdate?: string; childAge?: string; allergyInfo: string };
 
 function parseAge(input?: string): number | null {
   if (!input) return null;
   const n = parseInt(input, 10);
   return Number.isNaN(n) ? null : n;
+}
+
+function parseBirthdate(input?: string): Date | null {
+  if (!input) return null;
+  const d = new Date(input);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export async function POST(req: NextRequest) {
@@ -77,6 +83,7 @@ export async function POST(req: NextRequest) {
     data: validChildren.map((c) => ({
       familyId: family!.id,
       childName: c.childName.trim(),
+      birthday: parseBirthdate(c.childBirthdate),
       age: parseAge(c.childAge),
       medicalNotes: c.allergyInfo.trim(),
       pickupRequired: transportationNeeds === "Yes",
