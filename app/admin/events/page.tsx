@@ -58,6 +58,9 @@ export default function EventsPage() {
   const [remindingId, setRemindingId] = useState<string | null>(null);
   const [remindResults, setRemindResults] = useState<Record<string, RemindResult>>({});
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
+  // Hides the Text Reminder button entirely until Twilio credentials are actually
+  // set in production - avoids a button that's guaranteed to fail right now.
+  const [smsConfigured, setSmsConfigured] = useState(false);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/events");
@@ -67,6 +70,12 @@ export default function EventsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    fetch("/api/sms-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setSmsConfigured(Boolean(data?.configured)));
+  }, []);
 
   function startEdit(e: Event) {
     setEditingId(e.id);
@@ -242,18 +251,20 @@ export default function EventsPage() {
               <div className="flex gap-2 flex-wrap">
                 <Link href={`/checkin/${e.id}`} className="btn-secondary">Check-In</Link>
                 <Link href={`/admin/routes?eventId=${e.id}`} className="btn-secondary">Routes</Link>
-                <button
-                  className="btn-secondary"
-                  onClick={() => sendReminder(e.id)}
-                  disabled={remindingId === e.id}
-                >
-                  {remindingId === e.id ? "Sending..." : "📱 Text Reminder"}
-                </button>
+                {smsConfigured && (
+                  <button
+                    className="btn-secondary"
+                    onClick={() => sendReminder(e.id)}
+                    disabled={remindingId === e.id}
+                  >
+                    {remindingId === e.id ? "Sending..." : "📱 Text Reminder"}
+                  </button>
+                )}
                 <button className="btn-secondary" onClick={() => startEdit(e)}>Edit</button>
                 <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>
               </div>
             </div>
-            {remindResults[e.id] && (
+            {smsConfigured && remindResults[e.id] && (
               <p className="text-sm text-slate-500 border-t border-slate-100 pt-2">
                 Sent to {remindResults[e.id].sentCount} famil{remindResults[e.id].sentCount === 1 ? "y" : "ies"}.{" "}
                 {remindResults[e.id].skippedCount} not opted in.
