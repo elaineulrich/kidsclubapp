@@ -35,12 +35,25 @@ function isToday(dateStr: string) {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 }
 
+// An event moves to the Past tab 13 hours after its start time - not right at
+// midnight or right when it ends, so there's a wide overnight window to still
+// finish check-out, fix a route, etc. before it drops out of the main list.
+const PAST_CUTOFF_MS = 13 * 60 * 60 * 1000;
+
+function isPastEvent(e: Event) {
+  const [hours, minutes] = e.startTime.split(":").map(Number);
+  const start = new Date(e.eventDate);
+  start.setHours(hours, minutes, 0, 0);
+  return Date.now() >= start.getTime() + PAST_CUTOFF_MS;
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
 
   const load = useCallback(async () => {
     const res = await fetch("/api/events");
@@ -85,6 +98,15 @@ export default function EventsPage() {
     await fetch(`/api/events/${id}`, { method: "DELETE" });
     load();
   }
+
+  const pastEvents = events.filter(isPastEvent);
+  // Soonest first for what's coming up, most-recent-first for what's already
+  // happened - API returns everything newest-date-first, which only reads right
+  // for the past list.
+  const upcomingEvents = events
+    .filter((e) => !isPastEvent(e))
+    .sort((a, b) => a.eventDate.localeCompare(b.eventDate) || a.startTime.localeCompare(b.startTime));
+  const visibleEvents = tab === "past" ? pastEvents : upcomingEvents;
 
   return (
     <div className="space-y-4">
@@ -152,8 +174,23 @@ export default function EventsPage() {
         </form>
       </Modal>
 
+      <div className="flex gap-2">
+        <button
+          className={tab === "upcoming" ? "btn-primary flex-1 text-center" : "btn-secondary flex-1 text-center"}
+          onClick={() => setTab("upcoming")}
+        >
+          Today &amp; Upcoming ({upcomingEvents.length})
+        </button>
+        <button
+          className={tab === "past" ? "btn-primary flex-1 text-center" : "btn-secondary flex-1 text-center"}
+          onClick={() => setTab("past")}
+        >
+          Past ({pastEvents.length})
+        </button>
+      </div>
+
       <div className="space-y-3">
-        {events.map((e) => {
+        {visibleEvents.map((e) => {
           const today = isToday(e.eventDate);
           return (
           <div
@@ -195,7 +232,11 @@ export default function EventsPage() {
           </div>
           );
         })}
-        {events.length === 0 && <p className="text-slate-500">No events yet.</p>}
+        {visibleEvents.length === 0 && (
+          <p className="text-slate-500">
+            {tab === "past" ? "No past events yet." : "No upcoming events."}
+          </p>
+        )}
       </div>
     </div>
   );
