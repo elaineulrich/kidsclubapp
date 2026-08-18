@@ -245,9 +245,10 @@ export default function EventsPage() {
                 <button
                   className="btn-secondary"
                   onClick={() => sendReminder(e.id)}
-                  disabled={remindingId === e.id}
+                  disabled
+                  title="Coming soon — texting isn't set up yet"
                 >
-                  {remindingId === e.id ? "Sending..." : "📱 Text Reminder"}
+                  📱 Text Reminder (Coming Soon)
                 </button>
                 <button className="btn-secondary" onClick={() => startEdit(e)}>Edit</button>
                 <button className="btn-danger" onClick={() => handleDelete(e.id)}>Delete</button>

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type ChildEntry = { childName: string; childAge: string; allergyInfo: string };
+type ChildEntry = { childName: string; childBirthdate: string; childAge: string; allergyInfo: string };
 
-const emptyChild: ChildEntry = { childName: "", childAge: "", allergyInfo: "" };
+const emptyChild: ChildEntry = { childName: "", childBirthdate: "", childAge: "", allergyInfo: "" };
 
 const initialState = {
   children: [{ ...emptyChild }] as ChildEntry[],
@@ -116,6 +116,17 @@ export default function RegisterForm() {
                 required
                 value={child.childName}
                 onChange={(e) => updateChild(i, "childName", e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor={`childBirthdate-${i}`}>Child&apos;s Birthdate</label>
+              <input
+                id={`childBirthdate-${i}`}
+                type="date"
+                className="input"
+                value={child.childBirthdate}
+                onChange={(e) => updateChild(i, "childBirthdate", e.target.value)}
               />
             </div>
 
