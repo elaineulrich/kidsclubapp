@@ -33,6 +33,9 @@ function RoutesPageInner() {
   const [sortMessage, setSortMessage] = useState<string | null>(null);
   const [texting, setTexting] = useState(false);
   const [textResult, setTextResult] = useState<{ sentCount: number; skippedCount: number; failedCount: number } | null>(null);
+  // Hides the Text Drivers card entirely until Twilio credentials are actually
+  // set in production - avoids a button that's guaranteed to fail right now.
+  const [smsConfigured, setSmsConfigured] = useState(false);
 
   useEffect(() => {
     fetch("/api/events").then((r) => r.json()).then((evts: EventOption[]) => {
@@ -42,6 +45,12 @@ function RoutesPageInner() {
       }
     });
   }, [eventId, router]);
+
+  useEffect(() => {
+    fetch("/api/sms-status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setSmsConfigured(Boolean(data?.configured)));
+  }, []);
 
   const load = useCallback(async () => {
     if (!eventId) return;
@@ -343,32 +352,28 @@ function RoutesPageInner() {
         </div>
       )}
 
-      <div className="card space-y-2">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div>
-            <h2 className="font-semibold">Text Drivers</h2>
-            <p className="text-sm text-slate-500">
-              Sends every opted-in driver with a stop on this event a link to their route.{" "}
-              <span className="italic text-slate-400">(Coming soon &mdash; texting isn&apos;t set up yet.)</span>
-            </p>
+      {smsConfigured && (
+        <div className="card space-y-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="font-semibold">Text Drivers</h2>
+              <p className="text-sm text-slate-500">
+                Sends every opted-in driver with a stop on this event a link to their route.
+              </p>
+            </div>
+            <button className="btn-gradient" onClick={textDrivers} disabled={texting}>
+              {texting ? "Sending..." : "📱 Text Drivers Their Routes"}
+            </button>
           </div>
-          <button
-            className="btn-gradient"
-            onClick={textDrivers}
-            disabled
-            title="Coming soon — texting isn't set up yet"
-          >
-            📱 Text Drivers Their Routes
-          </button>
+          {textResult && (
+            <p className="text-sm text-slate-500 border-t border-slate-100 pt-2">
+              Sent to {textResult.sentCount} driver{textResult.sentCount === 1 ? "" : "s"}.{" "}
+              {textResult.skippedCount} not opted in.
+              {textResult.failedCount > 0 && ` ${textResult.failedCount} failed to send.`}
+            </p>
+          )}
         </div>
-        {textResult && (
-          <p className="text-sm text-slate-500 border-t border-slate-100 pt-2">
-            Sent to {textResult.sentCount} driver{textResult.sentCount === 1 ? "" : "s"}.{" "}
-            {textResult.skippedCount} not opted in.
-            {textResult.failedCount > 0 && ` ${textResult.failedCount} failed to send.`}
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }
