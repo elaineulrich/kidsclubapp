@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { Recurrence } from "@prisma/client";
-import { getOrgTimezone, classifyDay } from "@/lib/orgTime";
+import { getOrgTimezone, classifyDay, todayRangeInTimezone } from "@/lib/orgTime";
 import { cacheDel } from "@/lib/redis";
 import { driverRouteListKey, driverRouteDetailKey } from "@/lib/driverRouteCache";
+
+// How long to wait, after an occurrence's calendar day has fully ended (in the
+// org's timezone), before generating the next one - so the following week's event
+// doesn't appear on the admin's list in the middle of the night right after
+// today's, before there's been a chance to review/report on it.
+const GENERATION_DELAY_MS = 12 * 60 * 60 * 1000;
 
 // Assigns every active, pickup-required child who has a default van set to that van
 // for this event, unless they already have an assignment (e.g. an admin manually
@@ -105,7 +111,8 @@ function nextOccurrenceDate(eventDate: Date, recurrence: Recurrence): Date {
 
 // Ensures every active recurring series has at least one upcoming (or today's)
 // occurrence on the calendar - generating the next one, with default routes
-// pre-populated, if the latest existing occurrence has already passed.
+// pre-populated, once 12 hours have passed since the latest existing occurrence's
+// calendar day ended.
 export async function ensureUpcomingOccurrences() {
   const recurringEvents = await prisma.event.findMany({
     where: { recurrence: { not: "NONE" } },
@@ -120,8 +127,8 @@ export async function ensureUpcomingOccurrences() {
     }
   }
 
-  const startOfToday = new Date();
-  startOfToday.setUTCHours(0, 0, 0, 0);
+  const timeZone = await getOrgTimezone();
+  const now = new Date();
 
   for (const [rootId, latest] of latestBySeries) {
     let current = latest;
@@ -130,9 +137,9 @@ export async function ensureUpcomingOccurrences() {
     // unattended for several occurrences (e.g. the app wasn't opened for a
     // month) catches all the way up in one pass instead of one per page load.
     while (true) {
-      const currentDate = new Date(current.eventDate);
-      currentDate.setUTCHours(0, 0, 0, 0);
-      if (currentDate >= startOfToday) break;
+      const { end: dayAfterCurrent } = todayRangeInTimezone(timeZone, current.eventDate);
+      const generateAfter = new Date(dayAfterCurrent.getTime() + GENERATION_DELAY_MS);
+      if (now < generateAfter) break;
 
       const newEvent = await prisma.event.create({
         data: {

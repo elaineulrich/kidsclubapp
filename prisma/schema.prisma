@@ -74,6 +74,9 @@ model Family {
   emergencyContactName         String?
   emergencyContactPhone        String?
   emergencyContactRelationship String?
+  /// Consent to receive SMS text messages (route notices, event reminders, etc.) at
+  /// `phone`. Defaults to false - opted in explicitly, never assumed.
+  smsOptIn                     Boolean  @default(false)
   createdDate                  DateTime @default(now())
 
   /// Geocoded once (lazily, the first time a route is auto-sorted by distance) and
