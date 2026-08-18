@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
     state,
     zip,
     transportationNeeds,
+    emergencyContactName,
+    emergencyContactPhone,
+    emergencyContactRelationship,
     smsOptIn,
   } = body as {
     children?: ChildInput[];
@@ -41,6 +44,9 @@ export async function POST(req: NextRequest) {
     state?: string;
     zip?: string;
     transportationNeeds?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
     smsOptIn?: boolean;
   };
 
@@ -74,6 +80,9 @@ export async function POST(req: NextRequest) {
         city,
         state,
         zip,
+        emergencyContactName: emergencyContactName || null,
+        emergencyContactPhone: emergencyContactPhone || null,
+        emergencyContactRelationship: emergencyContactRelationship || null,
         smsOptIn: smsOptIn === true,
       },
     });
@@ -100,6 +109,9 @@ export async function POST(req: NextRequest) {
     state,
     zip,
     transportationNeeds,
+    emergencyContactName,
+    emergencyContactPhone,
+    emergencyContactRelationship,
     smsOptIn: smsOptIn === true,
   };
 

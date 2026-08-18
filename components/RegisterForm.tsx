@@ -18,6 +18,9 @@ const initialState = {
   state: "",
   zip: "",
   transportationNeeds: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactRelationship: "",
   smsOptIn: false,
 };
 
@@ -264,6 +267,38 @@ export default function RegisterForm() {
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactName">Emergency Contact Name</label>
+        <input
+          id="emergencyContactName"
+          className="input"
+          value={form.emergencyContactName}
+          onChange={(e) => update("emergencyContactName", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactPhone">Emergency Contact Phone</label>
+        <input
+          id="emergencyContactPhone"
+          type="tel"
+          className="input"
+          value={form.emergencyContactPhone}
+          onChange={(e) => update("emergencyContactPhone", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactRelationship">Emergency Contact Relationship</label>
+        <input
+          id="emergencyContactRelationship"
+          className="input"
+          placeholder="e.g. Grandmother"
+          value={form.emergencyContactRelationship}
+          onChange={(e) => update("emergencyContactRelationship", e.target.value)}
+        />
       </div>
 
       <div className="flex items-start gap-2.5 pt-1">
