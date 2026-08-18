@@ -129,7 +129,7 @@ export async function sendDriverCodeEmail(
   }
 }
 
-export type RegistrationChild = { childName: string; childAge?: string; allergyInfo: string };
+export type RegistrationChild = { childName: string; childBirthdate?: string; childAge?: string; allergyInfo: string };
 
 export type RegistrationSubmission = {
   children: RegistrationChild[];
@@ -170,6 +170,7 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
           .map(
             (c) => `
           <p><strong>Child's Full Name:</strong> ${c.childName}</p>
+          <p><strong>Child's Birthdate:</strong> ${c.childBirthdate || "Not provided"}</p>
           <p><strong>Child's Age:</strong> ${c.childAge || "Not provided"}</p>
           <p><strong>Child's Allergy Info:</strong> ${c.allergyInfo}</p>
         `

@@ -181,13 +181,16 @@ export default function FamiliesPage() {
             <input
               id="smsOptIn"
               type="checkbox"
-              className="mt-1 h-4 w-4 shrink-0"
+              className="mt-1 h-4 w-4 shrink-0 disabled:opacity-50"
               checked={form.smsOptIn}
+              disabled
+              title="Texting isn't set up yet"
               onChange={(e) => setForm({ ...form, smsOptIn: e.target.checked })}
             />
-            <label htmlFor="smsOptIn" className="text-sm text-slate-600">
+            <label htmlFor="smsOptIn" className="text-sm text-slate-400">
               Opted in to receive SMS text messages (event reminders, route notices, etc.).
-              Only check this if the family has given consent.
+              Only check this if the family has given consent.{" "}
+              <span className="italic">(Coming soon &mdash; texting isn&apos;t set up yet.)</span>
             </label>
           </div>
           <div className="md:col-span-2 flex gap-2">

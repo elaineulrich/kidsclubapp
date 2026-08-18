@@ -348,11 +348,17 @@ function RoutesPageInner() {
           <div>
             <h2 className="font-semibold">Text Drivers</h2>
             <p className="text-sm text-slate-500">
-              Sends every opted-in driver with a stop on this event a link to their route.
+              Sends every opted-in driver with a stop on this event a link to their route.{" "}
+              <span className="italic text-slate-400">(Coming soon &mdash; texting isn&apos;t set up yet.)</span>
             </p>
           </div>
-          <button className="btn-gradient" onClick={textDrivers} disabled={texting}>
-            {texting ? "Sending..." : "📱 Text Drivers Their Routes"}
+          <button
+            className="btn-gradient"
+            onClick={textDrivers}
+            disabled
+            title="Coming soon — texting isn't set up yet"
+          >
+            📱 Text Drivers Their Routes
           </button>
         </div>
         {textResult && (

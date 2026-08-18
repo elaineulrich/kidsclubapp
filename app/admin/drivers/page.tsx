@@ -112,13 +112,16 @@ export default function DriversPage() {
             <input
               id="driverSmsOptIn"
               type="checkbox"
-              className="mt-1 h-4 w-4 shrink-0"
+              className="mt-1 h-4 w-4 shrink-0 disabled:opacity-50"
               checked={form.smsOptIn}
+              disabled
+              title="Texting isn't set up yet"
               onChange={(e) => setForm({ ...form, smsOptIn: e.target.checked })}
             />
-            <label htmlFor="driverSmsOptIn" className="text-sm text-slate-600">
+            <label htmlFor="driverSmsOptIn" className="text-sm text-slate-400">
               Opted in to receive SMS text messages (route links, etc.). Only check this if the
-              driver has given consent.
+              driver has given consent.{" "}
+              <span className="italic">(Coming soon &mdash; texting isn&apos;t set up yet.)</span>
             </label>
           </div>
           <div className="md:col-span-2 flex gap-2">
