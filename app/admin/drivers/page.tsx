@@ -10,10 +10,11 @@ type Driver = {
   email: string | null;
   loginCode: string;
   activeStatus: boolean;
+  smsOptIn: boolean;
   vans: { id: string; vanName: string }[];
 };
 
-const emptyForm = { name: "", phone: "", email: "", loginCode: "" };
+const emptyForm = { name: "", phone: "", email: "", loginCode: "", smsOptIn: false };
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -33,7 +34,7 @@ export default function DriversPage() {
 
   function startEdit(d: Driver) {
     setEditingId(d.id);
-    setForm({ name: d.name, phone: d.phone, email: d.email ?? "", loginCode: d.loginCode });
+    setForm({ name: d.name, phone: d.phone, email: d.email ?? "", loginCode: d.loginCode, smsOptIn: d.smsOptIn });
     setShowForm(true);
   }
 
@@ -107,6 +108,19 @@ export default function DriversPage() {
             <input className="input" required placeholder="VAN1-4829" value={form.loginCode}
               onChange={(e) => setForm({ ...form, loginCode: e.target.value })} />
           </div>
+          <div className="md:col-span-2 flex items-start gap-2.5">
+            <input
+              id="driverSmsOptIn"
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0"
+              checked={form.smsOptIn}
+              onChange={(e) => setForm({ ...form, smsOptIn: e.target.checked })}
+            />
+            <label htmlFor="driverSmsOptIn" className="text-sm text-slate-600">
+              Opted in to receive SMS text messages (route links, etc.). Only check this if the
+              driver has given consent.
+            </label>
+          </div>
           <div className="md:col-span-2 flex gap-2">
             <button type="submit" className="btn-primary" disabled={loading}>
               {editingId ? "Save Changes" : "Add Driver"}
@@ -130,6 +144,13 @@ export default function DriversPage() {
               {d.vans.length > 0 && (
                 <p className="text-slate-500 text-sm">Van: {d.vans.map((v) => v.vanName).join(", ")}</p>
               )}
+              <p className="text-sm mt-1">
+                {d.smsOptIn ? (
+                  <span className="text-emerald-600">📱 SMS opted in</span>
+                ) : (
+                  <span className="text-slate-400">SMS not opted in</span>
+                )}
+              </p>
             </div>
             <div className="flex gap-2 items-start">
               <button className="btn-secondary" onClick={() => startEdit(d)}>Edit</button>

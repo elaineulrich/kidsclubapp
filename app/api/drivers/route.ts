@@ -19,14 +19,14 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-  const { name, phone, email, loginCode } = body;
+  const { name, phone, email, loginCode, smsOptIn } = body;
 
   if (!name || !phone || !loginCode) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const driver = await prisma.driver.create({
-    data: { name, phone, email, loginCode: loginCode.trim().toUpperCase() },
+    data: { name, phone, email, loginCode: loginCode.trim().toUpperCase(), smsOptIn: smsOptIn === true },
   });
 
   return NextResponse.json(driver, { status: 201 });

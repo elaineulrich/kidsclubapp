@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (error) return error;
 
   const body = await req.json();
-  const { name, phone, email, loginCode, activeStatus } = body;
+  const { name, phone, email, loginCode, activeStatus, smsOptIn } = body;
 
   const driver = await prisma.driver.update({
     where: { id: params.id },
@@ -17,6 +17,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       email,
       loginCode: loginCode ? loginCode.trim().toUpperCase() : undefined,
       activeStatus: activeStatus ?? undefined,
+      smsOptIn: smsOptIn ?? undefined,
     },
   });
 
