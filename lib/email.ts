@@ -141,6 +141,9 @@ export type RegistrationSubmission = {
   state: string;
   zip: string;
   transportationNeeds: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
   smsOptIn: boolean;
 };
 
@@ -181,6 +184,11 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
         <p><strong>Parent/Guardian's Phone:</strong> ${data.parentPhone}</p>
         <p><strong>Street Address:</strong> ${data.address}, ${data.city}, ${data.state} ${data.zip}</p>
         <p><strong>Transportation Needs:</strong> ${data.transportationNeeds}</p>
+        <p><strong>Emergency Contact:</strong> ${
+          [data.emergencyContactName, data.emergencyContactPhone, data.emergencyContactRelationship]
+            .filter(Boolean)
+            .join(" · ") || "Not provided"
+        }</p>
         <p><strong>SMS Opt-In:</strong> ${data.smsOptIn ? "Yes" : "No"}</p>
       `,
     });
