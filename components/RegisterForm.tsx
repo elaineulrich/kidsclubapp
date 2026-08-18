@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 
-type ChildEntry = { childName: string; childAge: string; allergyInfo: string };
+type ChildEntry = { childName: string; birthday: string; childAge: string; allergyInfo: string };
 
-const emptyChild: ChildEntry = { childName: "", childAge: "", allergyInfo: "" };
+const emptyChild: ChildEntry = { childName: "", birthday: "", childAge: "", allergyInfo: "" };
 
 const initialState = {
   children: [{ ...emptyChild }] as ChildEntry[],
@@ -17,6 +17,9 @@ const initialState = {
   city: "",
   state: "",
   zip: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactRelationship: "",
   transportationNeeds: "",
   smsOptIn: false,
 };
@@ -116,6 +119,17 @@ export default function RegisterForm() {
                 required
                 value={child.childName}
                 onChange={(e) => updateChild(i, "childName", e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor={`birthday-${i}`}>Child&apos;s Birthday</label>
+              <input
+                id={`birthday-${i}`}
+                type="date"
+                className="input"
+                value={child.birthday}
+                onChange={(e) => updateChild(i, "birthday", e.target.value)}
               />
             </div>
 
@@ -238,6 +252,38 @@ export default function RegisterForm() {
             onChange={(e) => update("zip", e.target.value)}
           />
         </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactName">Emergency Contact Name</label>
+        <input
+          id="emergencyContactName"
+          className="input"
+          value={form.emergencyContactName}
+          onChange={(e) => update("emergencyContactName", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactPhone">Emergency Contact Phone</label>
+        <input
+          id="emergencyContactPhone"
+          type="tel"
+          className="input"
+          value={form.emergencyContactPhone}
+          onChange={(e) => update("emergencyContactPhone", e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="label" htmlFor="emergencyContactRelationship">Emergency Contact Relationship</label>
+        <input
+          id="emergencyContactRelationship"
+          className="input"
+          placeholder="e.g. Grandmother"
+          value={form.emergencyContactRelationship}
+          onChange={(e) => update("emergencyContactRelationship", e.target.value)}
+        />
       </div>
 
       <div>

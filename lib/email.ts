@@ -129,7 +129,7 @@ export async function sendDriverCodeEmail(
   }
 }
 
-export type RegistrationChild = { childName: string; childAge?: string; allergyInfo: string };
+export type RegistrationChild = { childName: string; birthday?: string; childAge?: string; allergyInfo: string };
 
 export type RegistrationSubmission = {
   children: RegistrationChild[];
@@ -140,6 +140,9 @@ export type RegistrationSubmission = {
   city: string;
   state: string;
   zip: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
   transportationNeeds: string;
   smsOptIn: boolean;
 };
@@ -170,6 +173,7 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
           .map(
             (c) => `
           <p><strong>Child's Full Name:</strong> ${c.childName}</p>
+          <p><strong>Child's Birthday:</strong> ${c.birthday || "Not provided"}</p>
           <p><strong>Child's Age:</strong> ${c.childAge || "Not provided"}</p>
           <p><strong>Child's Allergy Info:</strong> ${c.allergyInfo}</p>
         `
@@ -179,6 +183,11 @@ export async function sendRegistrationEmail(data: RegistrationSubmission): Promi
         <p><strong>Parent/Guardian's Email:</strong> ${data.parentEmail}</p>
         <p><strong>Parent/Guardian's Phone:</strong> ${data.parentPhone}</p>
         <p><strong>Street Address:</strong> ${data.address}, ${data.city}, ${data.state} ${data.zip}</p>
+        <p><strong>Emergency Contact:</strong> ${
+          [data.emergencyContactName, data.emergencyContactPhone, data.emergencyContactRelationship]
+            .filter(Boolean)
+            .join(" · ") || "Not provided"
+        }</p>
         <p><strong>Transportation Needs:</strong> ${data.transportationNeeds}</p>
         <p><strong>SMS Opt-In:</strong> ${data.smsOptIn ? "Yes" : "No"}</p>
       `,
@@ -211,7 +220,7 @@ export async function sendRegistrationConfirmationEmail(data: RegistrationSubmis
         <p>Here's what we received:</p>
         <ul>
           ${data.children
-            .map((c) => `<li><strong>${c.childName}</strong> - Age: ${c.childAge || "Not provided"}</li>`)
+            .map((c) => `<li><strong>${c.childName}</strong> - Birthday: ${c.birthday || "Not provided"}, Age: ${c.childAge || "Not provided"}</li>`)
             .join("")}
           <li><strong>Transportation Needs:</strong> ${data.transportationNeeds}</li>
         </ul>
