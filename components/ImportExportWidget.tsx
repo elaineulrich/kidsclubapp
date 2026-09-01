@@ -51,6 +51,16 @@ export default function ImportExportWidget() {
         </a>
       </div>
 
+      <div className="space-y-2">
+        <p className="text-slate-500 text-sm">
+          Download just parent contact info (name, phone, email) as a CSV - handy for
+          importing into a mailing list or texting service.
+        </p>
+        <a href="/api/families/export-csv" className="btn-secondary inline-block" download>
+          Export Contacts (CSV)
+        </a>
+      </div>
+
       <div className="border-t border-slate-100 pt-3 space-y-2">
         <p className="text-slate-500 text-sm">
           Upload a roster spreadsheet (the exported format above, or a Haven Kids Club
