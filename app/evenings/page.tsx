@@ -67,8 +67,8 @@ export default function EveningsPage() {
               key={step.title}
               className={`flex flex-col ${i % 2 === 1 ? "sm:flex-row-reverse" : "sm:flex-row"} gap-6 items-center`}
             >
-              <div className="relative w-full sm:w-64 aspect-video rounded-xl overflow-hidden shadow-sm border border-slate-200 shrink-0">
-                <Image src={step.src} alt={step.title} fill sizes="256px" className="object-cover" />
+              <div className="relative w-full sm:w-[300px] aspect-square rounded-xl overflow-hidden shadow-sm border border-slate-200 shrink-0">
+                <Image src={step.src} alt={step.title} fill sizes="300px" className="object-cover" />
               </div>
               <div>
                 <span className="text-brand-500 font-semibold text-sm">Step {i + 1}</span>
