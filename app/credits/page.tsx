@@ -16,46 +16,6 @@ const credits = [
     licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
     source: "https://www.flickr.com/photos/11946169@N00/23840881045",
   },
-  {
-    file: "gallery-playing.jpg",
-    title: "DUCK --duck ---GOOSE",
-    creator: "jeri leandera",
-    license: "CC BY 2.0",
-    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
-    source: "https://www.flickr.com/photos/89335700@N00/404789013",
-  },
-  {
-    file: "gallery-singing.jpg",
-    title: "ELC Church Children's Choir",
-    creator: "hoyasmeg",
-    license: "CC BY 2.0",
-    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
-    source: "https://www.flickr.com/photos/62126383@N00/507873162",
-  },
-  {
-    file: "gallery-bible.jpg",
-    title: "Bongo in Class",
-    creator: "hoyasmeg",
-    license: "CC BY 2.0",
-    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
-    source: "https://www.flickr.com/photos/62126383@N00/3074591253",
-  },
-  {
-    file: "gallery-crafts.jpg",
-    title: "Budding Artists Create Holiday Masterpieces",
-    creator: "USAG-Humphreys",
-    license: "CC BY 2.0",
-    licenseUrl: "https://creativecommons.org/licenses/by/2.0/",
-    source: "https://www.flickr.com/photos/31687107@N07/3088373602",
-  },
-  {
-    file: "gallery-snack.jpg",
-    title: "Family Style Meal Service With Children in the CACFP",
-    creator: "USDA Food and Nutrition Service",
-    license: "Public Domain",
-    licenseUrl: "https://en.wikipedia.org/wiki/Public_domain",
-    source: "https://commons.wikimedia.org/wiki/File:Family_Style_Meal_Service_With_Children_in_the_CACFP_(20221214-USDA-FNS-UNK-023).jpg",
-  },
 ];
 
 export default function CreditsPage() {
