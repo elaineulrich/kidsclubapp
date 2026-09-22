@@ -98,6 +98,39 @@ export async function syncChildToNewDefaultVan(childId: string, newVanId: string
   }
 }
 
+// When a van's assigned driver changes, updates the driverId already stored on that
+// van's stops for any event that's today or upcoming and hasn't been confirmed yet -
+// otherwise those stops keep pointing at the van's old driver until the event's
+// routes are manually re-published, and the new driver's login shows no routes at
+// all. Past events, confirmed events, and stops already acted on are left alone,
+// same as syncChildToNewDefaultVan above.
+export async function syncVanDriverChange(vanId: string, newDriverId: string | null) {
+  const timeZone = await getOrgTimezone();
+
+  const assignments = await prisma.routeAssignment.findMany({
+    where: { vanId, status: "ASSIGNED", driverId: { not: newDriverId } },
+    include: { event: true },
+  });
+
+  for (const a of assignments) {
+    if (a.event.routesConfirmedAt) continue;
+    if (classifyDay(a.event.eventDate, timeZone) === "past") continue;
+
+    await prisma.routeAssignment.update({
+      where: { id: a.id },
+      data: { driverId: newDriverId },
+    });
+
+    const staleDriverIds = new Set([a.driverId, newDriverId].filter((id): id is string => !!id));
+    await cacheDel(
+      ...Array.from(staleDriverIds).flatMap((driverId) => [
+        driverRouteListKey(driverId),
+        driverRouteDetailKey(a.eventId, driverId),
+      ])
+    );
+  }
+}
+
 function addDaysUtc(date: Date, days: number): Date {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
