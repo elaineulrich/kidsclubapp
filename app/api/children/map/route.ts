@@ -24,7 +24,7 @@ export async function GET() {
   });
 
   const pins = [];
-  let unresolvedCount = 0;
+  const unresolved = [];
 
   for (const child of children) {
     const family = child.family;
@@ -41,7 +41,14 @@ export async function GET() {
     }
 
     if (!coords) {
-      unresolvedCount += 1;
+      unresolved.push({
+        childId: child.id,
+        childName: child.childName,
+        parentName: family.parentName,
+        address: [family.address, family.addressLine2, `${family.city}, ${family.state} ${family.zip}`]
+          .filter(Boolean)
+          .join(", "),
+      });
       continue;
     }
 
@@ -62,5 +69,5 @@ export async function GET() {
   const churchAddress = process.env.CHURCH_ADDRESS;
   const church = churchAddress ? await geocodeChurchAddress(churchAddress) : null;
 
-  return NextResponse.json({ vans, pins, unresolvedCount, church });
+  return NextResponse.json({ vans, pins, unresolved, church });
 }
