@@ -7,9 +7,15 @@ import { searchAddress, searchAddressGoogle } from "@/lib/geocode";
 //
 // Prefers Google Places (far more complete US house-number coverage) when
 // GOOGLE_PLACES_API_KEY is set; falls back to the free Nominatim search otherwise, same
-// as this endpoint has always done. A Google prediction only carries a placeId and
-// needs a follow-up call to /api/address-search/details to resolve into a full address
-// - a Nominatim result already has everything, so it comes back pre-"resolved". See
+// as this endpoint has always done. Also falls back to Nominatim if Google comes back
+// empty even with a key set - a real "no matches" is rare for a partial US address, so
+// an empty Google response is far more likely a misconfigured key (Places API (New)
+// not enabled, wrong restrictions, billing) than a genuine miss, and silently returning
+// nothing would make address search look broken instead of just degraded.
+//
+// A Google prediction only carries a placeId and needs a follow-up call to
+// /api/address-search/details to resolve into a full address - a Nominatim result
+// already has everything, so it comes back pre-"resolved". See
 // components/AddressAutocomplete.tsx for how the two are told apart.
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim();
@@ -17,9 +23,11 @@ export async function GET(req: NextRequest) {
 
   if (process.env.GOOGLE_PLACES_API_KEY) {
     const predictions = await searchAddressGoogle(q);
-    return NextResponse.json({
-      results: predictions.map((p) => ({ id: p.placeId, label: p.label })),
-    });
+    if (predictions.length > 0) {
+      return NextResponse.json({
+        results: predictions.map((p) => ({ id: p.placeId, label: p.label })),
+      });
+    }
   }
 
   const results = await searchAddress(q);

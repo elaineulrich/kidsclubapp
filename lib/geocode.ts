@@ -176,7 +176,10 @@ export async function searchAddressGoogle(query: string): Promise<PlacePredictio
       },
       body: JSON.stringify({ input: query, includedRegionCodes: ["us"] }),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`Google Places Autocomplete failed: ${res.status} ${await res.text()}`);
+      return [];
+    }
 
     const data: { suggestions?: { placePrediction?: { placeId: string; text: { text: string } } }[] } =
       await res.json();
@@ -184,7 +187,8 @@ export async function searchAddressGoogle(query: string): Promise<PlacePredictio
       .map((s) => s.placePrediction)
       .filter((p): p is { placeId: string; text: { text: string } } => !!p)
       .map((p) => ({ placeId: p.placeId, label: p.text.text }));
-  } catch {
+  } catch (err) {
+    console.error("Google Places Autocomplete threw", err);
     return [];
   }
 }
@@ -215,7 +219,10 @@ export async function getPlaceDetails(placeId: string): Promise<AddressSuggestio
         "X-Goog-FieldMask": "formattedAddress,location,addressComponents",
       },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`Google Places Details failed: ${res.status} ${await res.text()}`);
+      return null;
+    }
 
     const data: GooglePlaceDetails = await res.json();
     if (!data.location) return null;
@@ -242,7 +249,8 @@ export async function getPlaceDetails(placeId: string): Promise<AddressSuggestio
       lat: data.location.latitude,
       lng: data.location.longitude,
     };
-  } catch {
+  } catch (err) {
+    console.error("Google Places Details threw", err);
     return null;
   }
 }
