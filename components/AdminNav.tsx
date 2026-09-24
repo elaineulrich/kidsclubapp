@@ -12,6 +12,7 @@ const links = [
   { href: "/admin/families", label: "Families" },
   { href: "/admin/children", label: "Children" },
   { href: "/admin/vans", label: "Vans" },
+  { href: "/admin/map", label: "Map" },
   { href: "/admin/drivers", label: "Drivers" },
   { href: "/admin/users", label: "Staff Accounts" },
   { href: "/admin/reports", label: "Reports" },
