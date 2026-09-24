@@ -8,10 +8,12 @@ import type { MapPin, MapVan } from "@/components/KidsMap";
 // ssr:false keeps it out of the server render entirely rather than erroring on it.
 const KidsMap = dynamic(() => import("@/components/KidsMap"), { ssr: false });
 
+type UnresolvedChild = { childId: string; childName: string; parentName: string; address: string };
+
 type MapData = {
   vans: MapVan[];
   pins: MapPin[];
-  unresolvedCount: number;
+  unresolved: UnresolvedChild[];
   church: { lat: number; lng: number } | null;
 };
 
@@ -54,11 +56,21 @@ export default function KidsMapPage() {
 
       {data && (
         <>
-          {data.unresolvedCount > 0 && (
-            <p className="text-sm text-amber-600">
-              {data.unresolvedCount} child{data.unresolvedCount === 1 ? "" : "ren"} couldn&apos;t be placed on the
-              map (address didn&apos;t resolve to a location).
-            </p>
+          {data.unresolved.length > 0 && (
+            <div className="card bg-amber-50 border-amber-100 text-sm">
+              <p className="text-amber-700 font-medium">
+                {data.unresolved.length} child{data.unresolved.length === 1 ? "" : "ren"} couldn&apos;t be placed
+                on the map - their address didn&apos;t resolve to a location. Double-check these in Admin &gt;
+                Families:
+              </p>
+              <ul className="mt-2 space-y-1">
+                {data.unresolved.map((c) => (
+                  <li key={c.childId} className="text-amber-800">
+                    <span className="font-medium">{c.childName}</span> ({c.parentName}) &mdash; {c.address}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <KidsMap pins={data.pins} vans={data.vans} center={center} />
         </>
