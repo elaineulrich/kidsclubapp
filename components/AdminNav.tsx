@@ -40,6 +40,7 @@ export default function AdminNav() {
   const [mounted, setMounted] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setMounted(true), []);
 
@@ -54,7 +55,12 @@ export default function AdminNav() {
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
       const clickedButton = [...buttonRefs.current.values()].some((el) => el.contains(target));
-      if (!clickedButton) close();
+      // A click inside the dropdown panel itself (e.g. one of its Links) must NOT
+      // close it here - this fires on mousedown, and closing would unmount the
+      // portal (and the link being clicked) before the browser's click event/
+      // navigation gets a chance to fire at all.
+      const clickedPanel = panelRef.current?.contains(target) ?? false;
+      if (!clickedButton && !clickedPanel) close();
     }
     document.addEventListener("mousedown", handleClickOutside);
     // The dropdown is positioned to a specific button's coordinates - if the page
@@ -142,11 +148,13 @@ export default function AdminNav() {
         menuPos &&
         createPortal(
           <div
+            ref={panelRef}
             className="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <Link
               href={openItem.href}
+              onClick={() => setOpenHref(null)}
               className={`block px-3 py-2 text-sm ${
                 pathname === openItem.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
               }`}
@@ -157,6 +165,7 @@ export default function AdminNav() {
               <Link
                 key={c.href}
                 href={c.href}
+                onClick={() => setOpenHref(null)}
                 className={`block px-3 py-2 text-sm ${
                   pathname === c.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
                 }`}
