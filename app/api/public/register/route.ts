@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendRegistrationEmail, sendRegistrationConfirmationEmail } from "@/lib/email";
+import { sanitizeLatLng } from "@/lib/geocode";
 
 type ChildInput = { childName: string; childBirthdate?: string; childAge?: string; allergyInfo: string };
 
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
     city,
     state,
     zip,
+    lat,
+    lng,
     transportationNeeds,
     emergencyContactName,
     emergencyContactPhone,
@@ -43,12 +46,20 @@ export async function POST(req: NextRequest) {
     city?: string;
     state?: string;
     zip?: string;
+    lat?: number;
+    lng?: number;
     transportationNeeds?: string;
     emergencyContactName?: string;
     emergencyContactPhone?: string;
     emergencyContactRelationship?: string;
     smsOptIn?: boolean;
   };
+
+  // Set only when it came from the address-search suggestion the parent picked (see
+  // AddressAutocomplete) - saves a geocoding round-trip later (route auto-sort, the
+  // Kids Map). Sanity-checked since it's client-supplied; garbage falls back to null,
+  // same as an address that was never geocoded at all.
+  const { lat: validLat, lng: validLng } = sanitizeLatLng(lat, lng);
 
   const validChildren = (children ?? []).filter((c) => c.childName?.trim() && c.allergyInfo?.trim());
 
@@ -84,6 +95,8 @@ export async function POST(req: NextRequest) {
         emergencyContactPhone: emergencyContactPhone || null,
         emergencyContactRelationship: emergencyContactRelationship || null,
         smsOptIn: smsOptIn === true,
+        lat: validLat,
+        lng: validLng,
       },
     });
   }

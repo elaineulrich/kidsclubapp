@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Modal from "@/components/Modal";
+import AddressAutocomplete, { AddressResult } from "@/components/AddressAutocomplete";
 
 type Family = {
   id: string;
@@ -30,6 +31,8 @@ const emptyForm = {
   city: "",
   state: "",
   zip: "",
+  lat: null as number | null,
+  lng: null as number | null,
   emergencyContactName: "",
   emergencyContactPhone: "",
   emergencyContactRelationship: "",
@@ -64,12 +67,34 @@ export default function FamiliesPage() {
       city: f.city,
       state: f.state,
       zip: f.zip,
+      lat: null,
+      lng: null,
       emergencyContactName: f.emergencyContactName ?? "",
       emergencyContactPhone: f.emergencyContactPhone ?? "",
       emergencyContactRelationship: f.emergencyContactRelationship ?? "",
       smsOptIn: f.smsOptIn,
     });
     setShowForm(true);
+  }
+
+  // Hand-editing any part of the address after picking a suggestion means the
+  // previously-picked coordinates no longer necessarily match - clear them so the
+  // server falls back to geocoding the corrected address instead of trusting a stale
+  // lat/lng.
+  function updateAddressField(key: "address" | "city" | "state" | "zip", value: string) {
+    setForm((f) => ({ ...f, [key]: value, lat: null, lng: null }));
+  }
+
+  function handleAddressSelect(result: AddressResult) {
+    setForm((f) => ({
+      ...f,
+      address: result.address || f.address,
+      city: result.city || f.city,
+      state: result.state || f.state,
+      zip: result.zip || f.zip,
+      lat: result.lat,
+      lng: result.lng,
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -135,10 +160,14 @@ export default function FamiliesPage() {
             <input className="input" type="email" value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
+          <div className="md:col-span-2">
+            <label className="label">Find Address</label>
+            <AddressAutocomplete onSelect={handleAddressSelect} placeholder="Start typing an address..." />
+          </div>
           <div>
             <label className="label">Address</label>
             <input className="input" required value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              onChange={(e) => updateAddressField("address", e.target.value)} />
           </div>
           <div>
             <label className="label">Apt/Suite/Unit #</label>
@@ -148,18 +177,18 @@ export default function FamiliesPage() {
           <div>
             <label className="label">City</label>
             <input className="input" required value={form.city}
-              onChange={(e) => setForm({ ...form, city: e.target.value })} />
+              onChange={(e) => updateAddressField("city", e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">State</label>
               <input className="input" required value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })} />
+                onChange={(e) => updateAddressField("state", e.target.value)} />
             </div>
             <div>
               <label className="label">Zip</label>
               <input className="input" required value={form.zip}
-                onChange={(e) => setForm({ ...form, zip: e.target.value })} />
+                onChange={(e) => updateAddressField("zip", e.target.value)} />
             </div>
           </div>
           <div>

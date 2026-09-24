@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import AddressAutocomplete, { AddressResult } from "@/components/AddressAutocomplete";
 
 type ChildEntry = { childName: string; childBirthdate: string; childAge: string; allergyInfo: string };
 
@@ -17,6 +18,8 @@ const initialState = {
   city: "",
   state: "",
   zip: "",
+  lat: null as number | null,
+  lng: null as number | null,
   transportationNeeds: "",
   emergencyContactName: "",
   emergencyContactPhone: "",
@@ -31,6 +34,26 @@ export default function RegisterForm() {
 
   function update<K extends keyof typeof initialState>(key: K, value: (typeof initialState)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  // Hand-editing any part of the address after picking a suggestion means the
+  // previously-picked coordinates no longer necessarily match - clear them so the
+  // server falls back to geocoding the corrected address instead of trusting a stale
+  // lat/lng.
+  function updateAddressField(key: "address" | "city" | "state" | "zip", value: string) {
+    setForm((f) => ({ ...f, [key]: value, lat: null, lng: null }));
+  }
+
+  function handleAddressSelect(result: AddressResult) {
+    setForm((f) => ({
+      ...f,
+      address: result.address || f.address,
+      city: result.city || f.city,
+      state: result.state || f.state,
+      zip: result.zip || f.zip,
+      lat: result.lat,
+      lng: result.lng,
+    }));
   }
 
   function updateChild(index: number, key: keyof ChildEntry, value: string) {
@@ -199,13 +222,21 @@ export default function RegisterForm() {
       </div>
 
       <div>
+        <label className="label" htmlFor="addressSearch">Find Your Address</label>
+        <AddressAutocomplete onSelect={handleAddressSelect} placeholder="Start typing your address..." />
+        <p className="text-xs text-slate-400 mt-1">
+          Pick your address from the list to fill in the fields below, or just type them in yourself.
+        </p>
+      </div>
+
+      <div>
         <label className="label" htmlFor="address">Street Address *</label>
         <input
           id="address"
           className="input"
           required
           value={form.address}
-          onChange={(e) => update("address", e.target.value)}
+          onChange={(e) => updateAddressField("address", e.target.value)}
         />
       </div>
 
@@ -227,7 +258,7 @@ export default function RegisterForm() {
           className="input"
           required
           value={form.city}
-          onChange={(e) => update("city", e.target.value)}
+          onChange={(e) => updateAddressField("city", e.target.value)}
         />
       </div>
 
@@ -239,7 +270,7 @@ export default function RegisterForm() {
             className="input"
             required
             value={form.state}
-            onChange={(e) => update("state", e.target.value)}
+            onChange={(e) => updateAddressField("state", e.target.value)}
           />
         </div>
         <div>
@@ -249,7 +280,7 @@ export default function RegisterForm() {
             className="input"
             required
             value={form.zip}
-            onChange={(e) => update("zip", e.target.value)}
+            onChange={(e) => updateAddressField("zip", e.target.value)}
           />
         </div>
       </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { sanitizeLatLng } from "@/lib/geocode";
 
 export async function GET(req: NextRequest) {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER"]);
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    parentName, phone, email, address, addressLine2, city, state, zip,
+    parentName, phone, email, address, addressLine2, city, state, zip, lat, lng,
     emergencyContactName, emergencyContactPhone, emergencyContactRelationship, smsOptIn,
   } = body;
 
@@ -39,11 +40,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  // Set when the admin picked a suggestion from AddressAutocomplete - saves a
+  // geocoding round-trip later (route auto-sort, the Kids Map).
+  const { lat: validLat, lng: validLng } = sanitizeLatLng(lat, lng);
+
   const family = await prisma.family.create({
     data: {
       parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
       smsOptIn: smsOptIn === true,
+      lat: validLat,
+      lng: validLng,
     },
   });
 

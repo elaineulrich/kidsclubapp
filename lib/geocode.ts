@@ -18,6 +18,15 @@ async function throttle() {
 
 export type LatLng = { lat: number; lng: number };
 
+// Validates a client-supplied lat/lng pair (e.g. from AddressAutocomplete) before it's
+// trusted and persisted - either both are a sane coordinate, or neither is kept, since
+// a fallback to lazy re-geocoding later is safer than a mismatched partial pair.
+export function sanitizeLatLng(lat: unknown, lng: unknown): { lat: number | null; lng: number | null } {
+  const validLat = typeof lat === "number" && Number.isFinite(lat) && lat >= -90 && lat <= 90;
+  const validLng = typeof lng === "number" && Number.isFinite(lng) && lng >= -180 && lng <= 180;
+  return validLat && validLng ? { lat: lat as number, lng: lng as number } : { lat: null, lng: null };
+}
+
 async function geocodeOnce(address: string): Promise<LatLng | null> {
   await throttle();
 
@@ -52,6 +61,82 @@ export async function geocodeAddress(address: string): Promise<LatLng | null> {
 
   const normalized = withSpacedRoadAbbreviation(address);
   return normalized ? geocodeOnce(normalized) : null;
+}
+
+export type AddressSuggestion = {
+  label: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  lat: number;
+  lng: number;
+};
+
+type NominatimAddressDetails = {
+  house_number?: string;
+  road?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  hamlet?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  "ISO3166-2-lvl4"?: string;
+};
+
+// Nominatim gives the full state name (e.g. "Texas"), but every address field in this
+// app is a plain text input already holding 2-letter codes - ISO3166-2-lvl4 ("US-TX")
+// is the reliable way to get the abbreviation; fall back to the full name if it's
+// somehow missing rather than leave the field blank.
+function stateAbbreviation(details: NominatimAddressDetails): string {
+  const iso = details["ISO3166-2-lvl4"];
+  if (iso?.startsWith("US-")) return iso.slice(3);
+  return details.state ?? "";
+}
+
+// Rural/unincorporated addresses don't have a "city" - Nominatim uses whichever of
+// these its data actually has, in roughly most-specific-first order.
+function cityName(details: NominatimAddressDetails): string {
+  return details.city ?? details.town ?? details.village ?? details.hamlet ?? details.suburb ?? "";
+}
+
+// Address-search-as-you-type for the autocomplete UI, scoped to the US since this app
+// only serves one Texas community. Shares the module-level throttle with geocodeOnce
+// so a burst of keystrokes still respects Nominatim's 1 req/sec policy.
+export async function searchAddress(query: string): Promise<AddressSuggestion[]> {
+  await throttle();
+
+  try {
+    const url = `${NOMINATIM_URL}?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+    if (!res.ok) return [];
+
+    const results: {
+      display_name: string;
+      lat: string;
+      lon: string;
+      address: NominatimAddressDetails;
+    }[] = await res.json();
+
+    return results
+      .map((r) => {
+        const street = [r.address.house_number, r.address.road].filter(Boolean).join(" ");
+        return {
+          label: r.display_name,
+          address: street,
+          city: cityName(r.address),
+          state: stateAbbreviation(r.address),
+          zip: r.address.postcode ?? "",
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+        };
+      })
+      .filter((r) => r.address);
+  } catch {
+    return [];
+  }
 }
 
 // The church address rarely changes and has nowhere natural to persist coordinates
