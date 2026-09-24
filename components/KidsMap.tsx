@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { APIProvider, Map, Marker, InfoWindow } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, Marker, InfoWindow, useApiIsLoaded } from "@vis.gl/react-google-maps";
 
 export type MapPin = {
   childId: string;
@@ -27,6 +27,45 @@ function colorForVan(vanId: string | null, vanOrder: string[]): string {
   if (!vanId) return UNASSIGNED_COLOR;
   const idx = vanOrder.indexOf(vanId);
   return idx === -1 ? UNASSIGNED_COLOR : VAN_COLORS[idx % VAN_COLORS.length];
+}
+
+// <Map> itself waits internally for the Maps JS SDK to load before it does anything,
+// but a marker's `icon` prop references the `google.maps.*` globals directly at
+// render time - evaluating that before the SDK script has actually finished loading
+// throws "google is not defined". useApiIsLoaded() (only usable inside <APIProvider>)
+// is the signal to wait for, so the markers live in their own child component that
+// renders nothing until it's true.
+function MapMarkers({
+  pins,
+  vanOrder,
+  onSelect,
+}: {
+  pins: MapPin[];
+  vanOrder: string[];
+  onSelect: (childId: string) => void;
+}) {
+  const loaded = useApiIsLoaded();
+  if (!loaded) return null;
+
+  return (
+    <>
+      {pins.map((p) => (
+        <Marker
+          key={p.childId}
+          position={{ lat: p.lat, lng: p.lng }}
+          onClick={() => onSelect(p.childId)}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: colorForVan(p.defaultVanId, vanOrder),
+            fillOpacity: 0.9,
+            strokeColor: "#fff",
+            strokeWeight: 1.5,
+          }}
+        />
+      ))}
+    </>
+  );
 }
 
 export default function KidsMap({
@@ -72,21 +111,7 @@ export default function KidsMap({
       <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: "70vh" }}>
         <APIProvider apiKey={apiKey}>
           <Map defaultCenter={center} defaultZoom={11} disableDefaultUI={false} gestureHandling="greedy">
-            {pins.map((p) => (
-              <Marker
-                key={p.childId}
-                position={{ lat: p.lat, lng: p.lng }}
-                onClick={() => setSelectedId(p.childId)}
-                icon={{
-                  path: google.maps.SymbolPath.CIRCLE,
-                  scale: 8,
-                  fillColor: colorForVan(p.defaultVanId, vanOrder),
-                  fillOpacity: 0.9,
-                  strokeColor: "#fff",
-                  strokeWeight: 1.5,
-                }}
-              />
-            ))}
+            <MapMarkers pins={pins} vanOrder={vanOrder} onSelect={setSelectedId} />
             {selected && (
               <InfoWindow position={{ lat: selected.lat, lng: selected.lng }} onCloseClick={() => setSelectedId(null)}>
                 <div className="text-sm">
