@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { APIProvider, Map, Marker, InfoWindow, useApiIsLoaded } from "@vis.gl/react-google-maps";
+import { useMemo, useState } from "react";
+import { APIProvider, Map as GoogleMap, Marker, InfoWindow, useApiIsLoaded } from "@vis.gl/react-google-maps";
 
 export type MapPin = {
   childId: string;
   childName: string;
+  familyId: string;
   parentName: string;
   address: string;
   lat: number;
@@ -13,6 +14,55 @@ export type MapPin = {
   defaultVanId: string | null;
   defaultVanName: string | null;
 };
+
+// Siblings share their family's address, so their pins land on the exact same
+// coordinate and stack perfectly on top of each other - only the topmost one is
+// visible or clickable, which reads as kids missing from the map even though
+// they're there. Grouping by family into one marker (listing every child in the
+// InfoWindow) fixes that.
+type FamilyGroup = {
+  familyId: string;
+  parentName: string;
+  address: string;
+  lat: number;
+  lng: number;
+  children: { childId: string; childName: string; defaultVanId: string | null; defaultVanName: string | null }[];
+};
+
+function groupByFamily(pins: MapPin[]): FamilyGroup[] {
+  const groups = new Map<string, FamilyGroup>();
+  for (const p of pins) {
+    let group = groups.get(p.familyId);
+    if (!group) {
+      group = { familyId: p.familyId, parentName: p.parentName, address: p.address, lat: p.lat, lng: p.lng, children: [] };
+      groups.set(p.familyId, group);
+    }
+    group.children.push({
+      childId: p.childId,
+      childName: p.childName,
+      defaultVanId: p.defaultVanId,
+      defaultVanName: p.defaultVanName,
+    });
+  }
+  return Array.from(groups.values());
+}
+
+// A family's marker is colored by whichever van most of its kids ride - usually all
+// of them, but siblings can be split across vans, and every child's own van still
+// shows in the InfoWindow list regardless of which color "wins" for the pin itself.
+function majorityVan(children: FamilyGroup["children"]): string | null {
+  const counts = new Map<string | null, number>();
+  for (const c of children) counts.set(c.defaultVanId, (counts.get(c.defaultVanId) ?? 0) + 1);
+  let best: string | null = null;
+  let bestCount = -1;
+  for (const [vanId, count] of counts) {
+    if (count > bestCount) {
+      best = vanId;
+      bestCount = count;
+    }
+  }
+  return best;
+}
 
 export type MapVan = { id: string; vanName: string };
 
@@ -36,28 +86,33 @@ function colorForVan(vanId: string | null, vanOrder: string[]): string {
 // is the signal to wait for, so the markers live in their own child component that
 // renders nothing until it's true.
 function MapMarkers({
-  pins,
+  families,
   vanOrder,
   onSelect,
 }: {
-  pins: MapPin[];
+  families: FamilyGroup[];
   vanOrder: string[];
-  onSelect: (childId: string) => void;
+  onSelect: (familyId: string) => void;
 }) {
   const loaded = useApiIsLoaded();
   if (!loaded) return null;
 
   return (
     <>
-      {pins.map((p) => (
+      {families.map((f) => (
         <Marker
-          key={p.childId}
-          position={{ lat: p.lat, lng: p.lng }}
-          onClick={() => onSelect(p.childId)}
+          key={f.familyId}
+          position={{ lat: f.lat, lng: f.lng }}
+          onClick={() => onSelect(f.familyId)}
+          label={
+            f.children.length > 1
+              ? { text: String(f.children.length), color: "#fff", fontSize: "11px", fontWeight: "700" }
+              : undefined
+          }
           icon={{
             path: google.maps.SymbolPath.CIRCLE,
             scale: 8,
-            fillColor: colorForVan(p.defaultVanId, vanOrder),
+            fillColor: colorForVan(majorityVan(f.children), vanOrder),
             fillOpacity: 0.9,
             strokeColor: "#fff",
             strokeWeight: 1.5,
@@ -80,7 +135,8 @@ export default function KidsMap({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const vanOrder = vans.map((v) => v.id);
-  const selected = pins.find((p) => p.childId === selectedId) ?? null;
+  const families = useMemo(() => groupByFamily(pins), [pins]);
+  const selected = families.find((f) => f.familyId === selectedId) ?? null;
 
   if (!apiKey) {
     return (
@@ -110,19 +166,24 @@ export default function KidsMap({
 
       <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: "70vh" }}>
         <APIProvider apiKey={apiKey}>
-          <Map defaultCenter={center} defaultZoom={11} disableDefaultUI={false} gestureHandling="greedy">
-            <MapMarkers pins={pins} vanOrder={vanOrder} onSelect={setSelectedId} />
+          <GoogleMap defaultCenter={center} defaultZoom={11} disableDefaultUI={false} gestureHandling="greedy">
+            <MapMarkers families={families} vanOrder={vanOrder} onSelect={setSelectedId} />
             {selected && (
               <InfoWindow position={{ lat: selected.lat, lng: selected.lng }} onCloseClick={() => setSelectedId(null)}>
                 <div className="text-sm">
-                  <p className="font-semibold">{selected.childName}</p>
-                  <p>{selected.parentName}</p>
+                  <p className="font-semibold">{selected.parentName}</p>
                   <p className="text-slate-500">{selected.address}</p>
-                  <p className="mt-1">{selected.defaultVanName ?? "No default van"}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {selected.children.map((c) => (
+                      <li key={c.childId}>
+                        {c.childName} <span className="text-slate-500">&mdash; {c.defaultVanName ?? "No default van"}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </InfoWindow>
             )}
-          </Map>
+          </GoogleMap>
         </APIProvider>
       </div>
     </div>

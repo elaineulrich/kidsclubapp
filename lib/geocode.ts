@@ -150,6 +150,103 @@ export async function searchAddress(query: string): Promise<AddressSuggestion[]>
   }
 }
 
+const GOOGLE_PLACES_AUTOCOMPLETE_URL = "https://places.googleapis.com/v1/places:autocomplete";
+const GOOGLE_PLACES_DETAILS_URL = "https://places.googleapis.com/v1/places";
+
+export type PlacePrediction = { placeId: string; label: string };
+
+// Google Places Autocomplete (New) - used instead of Nominatim when
+// GOOGLE_PLACES_API_KEY is set, since Google's US house-number coverage is far more
+// complete than OpenStreetMap's (Nominatim often only has the street, not every
+// specific house number, especially in smaller towns). Only returns a placeId + label
+// text - getPlaceDetails() below resolves the one the user actually picks into a full
+// address + coordinates, since Places bills Details separately from Autocomplete and
+// it'd be wasteful to resolve every prediction shown instead of just the chosen one.
+export async function searchAddressGoogle(query: string): Promise<PlacePrediction[]> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return [];
+
+  try {
+    const res = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text",
+      },
+      body: JSON.stringify({ input: query, includedRegionCodes: ["us"] }),
+    });
+    if (!res.ok) return [];
+
+    const data: { suggestions?: { placePrediction?: { placeId: string; text: { text: string } } }[] } =
+      await res.json();
+    return (data.suggestions ?? [])
+      .map((s) => s.placePrediction)
+      .filter((p): p is { placeId: string; text: { text: string } } => !!p)
+      .map((p) => ({ placeId: p.placeId, label: p.text.text }));
+  } catch {
+    return [];
+  }
+}
+
+type GoogleAddressComponent = { longText: string; shortText: string; types: string[] };
+type GooglePlaceDetails = {
+  formattedAddress?: string;
+  location?: { latitude: number; longitude: number };
+  addressComponents?: GoogleAddressComponent[];
+};
+
+function googleComponent(components: GoogleAddressComponent[] | undefined, type: string, short = false): string {
+  const c = components?.find((c) => c.types.includes(type));
+  if (!c) return "";
+  return short ? c.shortText : c.longText;
+}
+
+// Resolves one Google Places prediction (by placeId, from searchAddressGoogle above)
+// into a full address + coordinates.
+export async function getPlaceDetails(placeId: string): Promise<AddressSuggestion | null> {
+  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const res = await fetch(`${GOOGLE_PLACES_DETAILS_URL}/${placeId}`, {
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "formattedAddress,location,addressComponents",
+      },
+    });
+    if (!res.ok) return null;
+
+    const data: GooglePlaceDetails = await res.json();
+    if (!data.location) return null;
+
+    const street = [
+      googleComponent(data.addressComponents, "street_number"),
+      googleComponent(data.addressComponents, "route"),
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const city =
+      googleComponent(data.addressComponents, "locality") ||
+      googleComponent(data.addressComponents, "sublocality") ||
+      googleComponent(data.addressComponents, "administrative_area_level_3");
+    const state = googleComponent(data.addressComponents, "administrative_area_level_1", true);
+    const zip = googleComponent(data.addressComponents, "postal_code");
+
+    return {
+      label: data.formattedAddress ?? [street, city, state, zip].filter(Boolean).join(", "),
+      address: street,
+      city,
+      state,
+      zip,
+      lat: data.location.latitude,
+      lng: data.location.longitude,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // The church address rarely changes and has nowhere natural to persist coordinates
 // (it's an env var, not a DB row), so it's cached in Redis instead - falls through to
 // a fresh lookup on every call if Redis isn't configured, which is fine since this

@@ -55,6 +55,7 @@ export async function GET() {
     pins.push({
       childId: child.id,
       childName: child.childName,
+      familyId: family.id,
       parentName: family.parentName,
       address: [family.address, family.addressLine2, `${family.city}, ${family.state} ${family.zip}`]
         .filter(Boolean)
