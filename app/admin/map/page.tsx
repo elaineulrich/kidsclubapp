@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import type { MapPin, MapVan } from "@/components/KidsMap";
 
-// Leaflet touches `window` on import, so the map itself can only render client-side -
-// ssr:false keeps it out of the server render entirely rather than erroring on it.
+// The map loads the Google Maps JS SDK into the page itself, so it can only render
+// client-side - ssr:false keeps it out of the server render entirely.
 const KidsMap = dynamic(() => import("@/components/KidsMap"), { ssr: false });
 
 type MapData = {
