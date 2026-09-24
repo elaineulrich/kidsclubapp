@@ -166,28 +166,28 @@ export default function FamiliesPage() {
           </div>
           <div>
             <label className="label">Address</label>
-            <input className="input" required value={form.address}
+            <input className="input" required autoComplete="off" value={form.address}
               onChange={(e) => updateAddressField("address", e.target.value)} />
           </div>
           <div>
             <label className="label">Apt/Suite/Unit #</label>
-            <input className="input" placeholder="e.g. Apt 2B" value={form.addressLine2}
+            <input className="input" placeholder="e.g. Apt 2B" autoComplete="off" value={form.addressLine2}
               onChange={(e) => setForm({ ...form, addressLine2: e.target.value })} />
           </div>
           <div>
             <label className="label">City</label>
-            <input className="input" required value={form.city}
+            <input className="input" required autoComplete="off" value={form.city}
               onChange={(e) => updateAddressField("city", e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">State</label>
-              <input className="input" required value={form.state}
+              <input className="input" required autoComplete="off" value={form.state}
                 onChange={(e) => updateAddressField("state", e.target.value)} />
             </div>
             <div>
               <label className="label">Zip</label>
-              <input className="input" required value={form.zip}
+              <input className="input" required autoComplete="off" value={form.zip}
                 onChange={(e) => updateAddressField("zip", e.target.value)} />
             </div>
           </div>
