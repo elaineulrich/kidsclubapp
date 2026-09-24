@@ -1,7 +1,7 @@
 "use client";
 
-import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { useState } from "react";
+import { APIProvider, Map, Marker, InfoWindow } from "@vis.gl/react-google-maps";
 
 export type MapPin = {
   childId: string;
@@ -38,7 +38,18 @@ export default function KidsMap({
   vans: MapVan[];
   center: { lat: number; lng: number };
 }) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const vanOrder = vans.map((v) => v.id);
+  const selected = pins.find((p) => p.childId === selectedId) ?? null;
+
+  if (!apiKey) {
+    return (
+      <p className="text-sm text-amber-600">
+        The map needs a Google Maps API key - set NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in Railway to enable it.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -59,34 +70,35 @@ export default function KidsMap({
       </div>
 
       <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: "70vh" }}>
-        <MapContainer center={[center.lat, center.lng]} zoom={11} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {pins.map((p) => (
-            <CircleMarker
-              key={p.childId}
-              center={[p.lat, p.lng]}
-              radius={8}
-              pathOptions={{
-                color: "#fff",
-                weight: 1.5,
-                fillColor: colorForVan(p.defaultVanId, vanOrder),
-                fillOpacity: 0.9,
-              }}
-            >
-              <Popup>
+        <APIProvider apiKey={apiKey}>
+          <Map defaultCenter={center} defaultZoom={11} disableDefaultUI={false} gestureHandling="greedy">
+            {pins.map((p) => (
+              <Marker
+                key={p.childId}
+                position={{ lat: p.lat, lng: p.lng }}
+                onClick={() => setSelectedId(p.childId)}
+                icon={{
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 8,
+                  fillColor: colorForVan(p.defaultVanId, vanOrder),
+                  fillOpacity: 0.9,
+                  strokeColor: "#fff",
+                  strokeWeight: 1.5,
+                }}
+              />
+            ))}
+            {selected && (
+              <InfoWindow position={{ lat: selected.lat, lng: selected.lng }} onCloseClick={() => setSelectedId(null)}>
                 <div className="text-sm">
-                  <p className="font-semibold">{p.childName}</p>
-                  <p>{p.parentName}</p>
-                  <p className="text-slate-500">{p.address}</p>
-                  <p className="mt-1">{p.defaultVanName ?? "No default van"}</p>
+                  <p className="font-semibold">{selected.childName}</p>
+                  <p>{selected.parentName}</p>
+                  <p className="text-slate-500">{selected.address}</p>
+                  <p className="mt-1">{selected.defaultVanName ?? "No default van"}</p>
                 </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        </MapContainer>
+              </InfoWindow>
+            )}
+          </Map>
+        </APIProvider>
       </div>
     </div>
   );
