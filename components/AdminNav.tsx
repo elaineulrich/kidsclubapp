@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -35,23 +36,57 @@ const links: NavItem[] = [
 export default function AdminNav() {
   const pathname = usePathname();
   const [openHref, setOpenHref] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     setOpenHref(null);
   }, [pathname]);
 
   useEffect(() => {
+    function close() {
+      setOpenHref(null);
+    }
     function handleClickOutside(e: MouseEvent) {
-      if (navRef.current && !navRef.current.contains(e.target as Node)) setOpenHref(null);
+      const target = e.target as Node;
+      const clickedButton = [...buttonRefs.current.values()].some((el) => el.contains(target));
+      if (!clickedButton) close();
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // The dropdown is positioned to a specific button's coordinates - if the page
+    // scrolls or resizes while it's open, those coordinates go stale, so just close
+    // it rather than tracking a moving target.
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, []);
 
   function isActive(item: NavItem) {
     return pathname === item.href || (item.children?.some((c) => pathname === c.href) ?? false);
   }
+
+  function toggle(href: string) {
+    if (openHref === href) {
+      setOpenHref(null);
+      return;
+    }
+    const btn = buttonRefs.current.get(href);
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setOpenHref(href);
+  }
+
+  const openItem = links.find((l) => l.href === openHref);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -83,44 +118,55 @@ export default function AdminNav() {
 
           const open = openHref === item.href;
           return (
-            <div key={item.href} className="relative">
-              <button
-                type="button"
-                className={pillClass}
-                onClick={() => setOpenHref(open ? null : item.href)}
-              >
-                {item.label}
-                <span className={`transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
-                  ▾
-                </span>
-              </button>
-              {open && (
-                <div className="absolute left-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20">
-                  <Link
-                    href={item.href}
-                    className={`block px-3 py-2 text-sm ${
-                      pathname === item.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                  {item.children.map((c) => (
-                    <Link
-                      key={c.href}
-                      href={c.href}
-                      className={`block px-3 py-2 text-sm ${
-                        pathname === c.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      {c.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+            <button
+              key={item.href}
+              type="button"
+              ref={(el) => {
+                if (el) buttonRefs.current.set(item.href, el);
+                else buttonRefs.current.delete(item.href);
+              }}
+              className={pillClass}
+              onClick={() => toggle(item.href)}
+            >
+              {item.label}
+              <span className={`transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
+                ▾
+              </span>
+            </button>
           );
         })}
       </nav>
+
+      {mounted &&
+        openItem &&
+        menuPos &&
+        createPortal(
+          <div
+            className="fixed w-44 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-50"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <Link
+              href={openItem.href}
+              className={`block px-3 py-2 text-sm ${
+                pathname === openItem.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {openItem.label}
+            </Link>
+            {openItem.children!.map((c) => (
+              <Link
+                key={c.href}
+                href={c.href}
+                className={`block px-3 py-2 text-sm ${
+                  pathname === c.href ? "text-brand-600 font-medium" : "text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {c.label}
+              </Link>
+            ))}
+          </div>,
+          document.body
+        )}
     </header>
   );
 }
