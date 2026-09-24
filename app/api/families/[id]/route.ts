@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/apiAuth";
+import { sanitizeLatLng } from "@/lib/geocode";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { error } = await requireRole(["ADMIN", "VOLUNTEER"]);
@@ -20,12 +21,33 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const body = await req.json();
   const {
-    parentName, phone, email, address, addressLine2, city, state, zip,
+    parentName, phone, email, address, addressLine2, city, state, zip, lat, lng,
     emergencyContactName, emergencyContactPhone, emergencyContactRelationship, smsOptIn,
   } = body;
 
-  const existing = await prisma.family.findUnique({ where: { id: params.id }, select: { address: true } });
-  const addressChanged = existing && address !== undefined && address !== existing.address;
+  const existing = await prisma.family.findUnique({
+    where: { id: params.id },
+    select: { address: true, city: true, state: true, zip: true },
+  });
+  const addressChanged =
+    !!existing &&
+    [
+      address !== undefined && address !== existing.address,
+      city !== undefined && city !== existing.city,
+      state !== undefined && state !== existing.state,
+      zip !== undefined && zip !== existing.zip,
+    ].some(Boolean);
+
+  // A fresh pick from AddressAutocomplete always wins. Otherwise, stale coordinates
+  // are worse than none if any part of the address changed by hand - force a
+  // re-geocode next time this family's route is auto-sorted.
+  const { lat: validLat, lng: validLng } = sanitizeLatLng(lat, lng);
+  const latLngUpdate =
+    validLat !== null && validLng !== null
+      ? { lat: validLat, lng: validLng }
+      : addressChanged
+        ? { lat: null, lng: null }
+        : {};
 
   const family = await prisma.family.update({
     where: { id: params.id },
@@ -33,9 +55,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       parentName, phone, email, address, addressLine2, city, state, zip,
       emergencyContactName, emergencyContactPhone, emergencyContactRelationship,
       smsOptIn: smsOptIn === true,
-      // Stale coordinates are worse than none - force a re-geocode next time this
-      // family's route is auto-sorted.
-      ...(addressChanged ? { lat: null, lng: null } : {}),
+      ...latLngUpdate,
     },
   });
 
