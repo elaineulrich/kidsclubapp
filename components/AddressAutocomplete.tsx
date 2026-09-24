@@ -63,6 +63,7 @@ export default function AddressAutocomplete({
     <div className="relative">
       <input
         className="input"
+        autoComplete="off"
         placeholder={placeholder}
         value={query}
         onChange={(e) => {

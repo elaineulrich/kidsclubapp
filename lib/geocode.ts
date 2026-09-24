@@ -102,6 +102,14 @@ function cityName(details: NominatimAddressDetails): string {
   return details.city ?? details.town ?? details.village ?? details.hamlet ?? details.suburb ?? "";
 }
 
+// A short "123 Main St, Hillsboro, TX 76645" label for the suggestion dropdown -
+// Nominatim's own display_name is the full geocoder hierarchy (county, country, ...),
+// which is more than someone picking their own address needs to see.
+function suggestionLabel(street: string, city: string, state: string, zip: string): string {
+  const cityStateZip = [city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  return [street, cityStateZip].filter(Boolean).join(", ");
+}
+
 // Address-search-as-you-type for the autocomplete UI, scoped to the US since this app
 // only serves one Texas community. Shares the module-level throttle with geocodeOnce
 // so a burst of keystrokes still respects Nominatim's 1 req/sec policy.
@@ -123,12 +131,15 @@ export async function searchAddress(query: string): Promise<AddressSuggestion[]>
     return results
       .map((r) => {
         const street = [r.address.house_number, r.address.road].filter(Boolean).join(" ");
+        const city = cityName(r.address);
+        const state = stateAbbreviation(r.address);
+        const zip = r.address.postcode ?? "";
         return {
-          label: r.display_name,
+          label: suggestionLabel(street, city, state, zip),
           address: street,
-          city: cityName(r.address),
-          state: stateAbbreviation(r.address),
-          zip: r.address.postcode ?? "",
+          city,
+          state,
+          zip,
           lat: parseFloat(r.lat),
           lng: parseFloat(r.lon),
         };

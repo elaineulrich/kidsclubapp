@@ -235,6 +235,7 @@ export default function RegisterForm() {
           id="address"
           className="input"
           required
+          autoComplete="off"
           value={form.address}
           onChange={(e) => updateAddressField("address", e.target.value)}
         />
@@ -246,6 +247,7 @@ export default function RegisterForm() {
           id="addressLine2"
           className="input"
           placeholder="e.g. Apt 2B"
+          autoComplete="off"
           value={form.addressLine2}
           onChange={(e) => update("addressLine2", e.target.value)}
         />
@@ -257,6 +259,7 @@ export default function RegisterForm() {
           id="city"
           className="input"
           required
+          autoComplete="off"
           value={form.city}
           onChange={(e) => updateAddressField("city", e.target.value)}
         />
@@ -269,6 +272,7 @@ export default function RegisterForm() {
             id="state"
             className="input"
             required
+            autoComplete="off"
             value={form.state}
             onChange={(e) => updateAddressField("state", e.target.value)}
           />
@@ -279,6 +283,7 @@ export default function RegisterForm() {
             id="zip"
             className="input"
             required
+            autoComplete="off"
             value={form.zip}
             onChange={(e) => updateAddressField("zip", e.target.value)}
           />
